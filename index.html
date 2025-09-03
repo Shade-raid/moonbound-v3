@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Intro to Moonbound: Echoes of the Ashen Crown</title>
+<style>
+  :root{--bg:#05060a;--panel:#0d1014;--accent:#b77a3a;--muted:#9aa0aa;--dialog:#0b1220;--danger:#c14242;--success:#4a9c2d;--purple:#8a4fbe;--gold:#d4924a}
+  body{margin:0;font-family:Georgia,serif;background:linear-gradient(180deg,#02040a 0%, #08121a 100%);color:#efece6;font-size:14px}
+  
+  /* Main Menu Styles */
+  .main-menu{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    background:linear-gradient(135deg, #1a1530 0%, #2a1845 40%, #0a0a15 100%);
+    position:relative;
+    overflow:hidden;
+  }
+  
+  .title-section{
+    text-align:center;
+    margin-bottom:50px;
+    z-index:10;
+  }
+  
+  .game-title{
+    font-size:48px;
+    font-weight:700;
+    color:#ffffff;
+    text-shadow: 
+      0 0 30px rgba(183, 122, 58, 0.7),
+      0 0 50px rgba(100, 100, 100, 0.5),
+      2px 2px 6px rgba(0, 0, 0, 0.8);
+    margin-bottom:10px;
+    animation:titlePulse 4s ease-in-out infinite;
+  }
+  
+  .game-subtitle{
+    font-size:20px;
+    color:rgba(183, 122, 58, 0.8);
+    font-style:italic;
+    letter-spacing:2px;
+    text-shadow:0 0 15px rgba(183, 122, 58, 0.4);
+  }
+  
+  .menu-buttons{
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+    min-width:300px;
+  }
+  
+  .menu-btn{
+    background:linear-gradient(135deg, var(--accent) 0%, var(--gold) 100%);
+    border:none;
+    padding:15px 25px;
+    border-radius:12px;
+    color:#241305;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    transition:all 0.3s;
+    box-shadow:0 5px 15px rgba(183,122,58,0.3);
+    text-shadow:none;
+  }
+  
+  .menu-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 25px rgba(183,122,58,0.5);
+    background:linear-gradient(135deg, var(--gold) 0%, #e6a355 100%);
+  }
+  
+  .menu-btn:disabled{
+    background:#666;
+    color:#999;
+    cursor:not-allowed;
+    transform:none;
+    box-shadow:none;
+  }
+  
+  .background-effects{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    opacity:0.2;
+    pointer-events:none;
+  }
+  
+  .floating-symbols{
+    position:absolute;
+    width:100%;
+    height:100%;
+  }
+  
+  .symbol{
+    position:absolute;
+    color:rgba(255, 215, 0, 0.6);
+    font-size:24px;
+    animation:floatSymbol 15s ease-in-out infinite;
+  }
+  
+  @keyframes titlePulse{
+    0%, 100% { 
+      text-shadow: 
+        0 0 30px rgba(183, 122, 58, 0.7),
+        0 0 50px rgba(100, 100, 100, 0.5),
+        2px 2px 6px rgba(0, 0, 0, 0.8);
+    }
+    50% { 
+      text-shadow: 
+        0 0 40px rgba(183, 122, 58, 0.9),
+        0 0 60px rgba(120, 120, 120, 0.7),
+        2px 2px 6px rgba(0, 0, 0, 0.8);
+    }
+  }
+  
+  @keyframes floatSymbol{
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+    25% { transform: translateY(-25px) rotate(8deg); opacity: 0.8; }
+    50% { transform: translateY(-15px) rotate(-5deg); opacity: 0.4; }
+    75% { transform: translateY(-35px) rotate(12deg); opacity: 0.7; }
+  }
+  
+  /* Game UI Styles */
+  .game-container{display:none}
+  .app{display:grid;grid-template-columns:400px 1fr 420px;gap:12px;padding:12px;min-height:100vh}
+  .panel{background:var(--panel);padding:16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.7);border:1px solid rgba(183,122,58,0.1)}
+  h1{margin:0 0 8px;font-size:20px;color:var(--accent);text-shadow:0 2px 4px rgba(0,0,0,0.8)}
+  h2{margin:12px 0 6px;font-size:16px;color:#d4c4a8}
+  .small{font-size:13px;color:var(--muted);line-height:1.4}
+  .lore{font-style:italic;color:#c4a773;background:rgba(196,163,115,0.1);padding:10px;border-radius:8px;margin:8px 0;border-left:3px solid var(--accent)}
+  button{background:var(--accent);border:none;padding:10px 14px;border-radius:8px;color:#241305;font-weight:700;cursor:pointer;transition:all 0.2s}
+  button:hover{background:#d4924a;transform:translateY(-1px)}
+  button:disabled{background:#666;color:#999;cursor:not-allowed;transform:none}
+  .stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+  .stat:last-child{border-bottom:none}
+  .upgrades{display:flex;flex-direction:column;gap:10px}
+  .upgrade{display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)}
+  .dungeon-map{background:#071017;padding:12px;border-radius:10px;min-height:240px;border:1px solid rgba(255,255,255,0.1)}
+  .node{padding:12px;margin:8px;border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.05)}
+  .node:hover{background:rgba(183,122,58,0.1);transform:translateY(-2px)}
+  .node.locked{opacity:0.4;cursor:not-allowed}
+  .node.locked:hover{transform:none;background:rgba(255,255,255,0.03)}
+  .node.completed{border: 2px solid var(--accent); opacity: 0.6;}
+  .card{background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05)}
+  .dialogue{background:var(--dialog);padding:18px;border-radius:14px;margin-top:12px;min-height:140px;border:1px solid rgba(255,255,255,0.1)}
+  .choices{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .hp{font-weight:700}
+  .hp.dead{color:var(--danger)}
+  .hp.injured{color:#ff9500}
+  .hp.healthy{color:var(--success)}
+  .right-col{display:flex;flex-direction:column;gap:10px}
+  .inventory-list{min-height:100px; max-height:160px;overflow:auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;}
+  .log{height:200px;overflow:auto;background:#07131a;padding:10px;border-radius:10px;font-size:12px;border:1px solid rgba(255,255,255,0.1)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .small-muted{font-size:12px;color:#9b9b9b}
+  .chronicle{background:rgba(196,163,115,0.05);padding:12px;border-radius:8px;margin:10px 0;border-left:2px solid var(--accent)}
+  .legacy-title{color:var(--purple);text-shadow:0 0 10px rgba(138,79,190,0.5)}
+  .tooltip { position: relative; display: inline-block; }
+  .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: #111; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 12px; line-height: 1.5;}
+  .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+  .trait-tag { background: #3a3a3a; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin: 2px; display: inline-block; }
+  .status-effect { font-weight: bold; padding: 1px 4px; border-radius: 3px; font-size: 10px; }
+  .status-poison { color: #90ee90; background: rgba(144, 238, 144, 0.2); }
+  .status-stunned { color: #add8e6; background: rgba(173, 216, 230, 0.2); }
+  .status-weakened { color: #f0e68c; background: rgba(240, 230, 140, 0.2); }
+
+</style>
+</head>
+<body>
+
+<!-- Main Menu -->
+<div class="main-menu" id="mainMenu">
+  <div class="background-effects">
+    <div class="floating-symbols">
+      <div class="symbol" style="top:10%;left:15%;animation-delay:0s">♅</div>
+      <div class="symbol" style="top:20%;right:20%;animation-delay:2s">♄</div>
+      <div class="symbol" style="top:60%;left:10%;animation-delay:4s">♃</div>
+      <div class="symbol" style="top:70%;right:15%;animation-delay:6s">♆</div>
+      <div class="symbol" style="top:30%;left:60%;animation-delay:8s">♇</div>
+      <div class="symbol" style="bottom:20%;right:60%;animation-delay:10s">♃</div>
+    </div>
+  </div>
+  
+  <div class="title-section">
+    <h1 class="game-title">Intro to Moonbound</h1>
+    <div class="game-subtitle">Echoes of the Ashen Crown</div>
+  </div>
+  
+  <div class="menu-buttons">
+    <button class="menu-btn" onclick="startNewGame()">📜 Begin New Chronicle</button>
+    <button class="menu-btn" onclick="loadGame()" id="loadBtn">📖 Continue Chronicle</button>
+    <button class="menu-btn" onclick="showHelp()">❓ How to Play</button>
+  </div>
+</div>
+
+<!-- Game Container -->
+<div class="game-container" id="gameContainer">
+  <div class="app">
+    <div class="panel">
+      <h1>🕯️ The Chronicler's Scriptorium</h1>
+      <div class="lore">
+        The world is caught in a loop, endlessly dying and rebirthing under the curse of the Ashen Crown. You are the Chronicler, a being outside this cycle, tasked with recording its history. But perhaps you can do more. Perhaps you can guide the heroes of this age to finally shatter the crown and break the cycle.
+      </div>
+      
+      <div class="small">
+        <strong>Cycle Number:</strong> <span id="loops">1</span><br>
+        <strong>Legacy Power:</strong> <span id="crownFragments">0</span> Crown Fragments
+      </div>
+      
+      <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
+      
+      <div id="stats">
+        <div class="stat"><div>✒️ Temporal Essence</div><div id="essence">0</div></div>
+        <div class="stat"><div>📜 Lore Scraps</div><div id="loreScraps">0</div></div>
+        <div class="stat"><div>⚔️ Champions Guided</div><div id="champions">0</div></div>
+      </div>
+      
+      <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
+      
+      <h2>Chronicler's Arts</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button id="gather">✒️ Chronicle Events</button>
+        <button id="recruit">🤝 Find a Champion</button>
+      </div>
+      
+      <div style="margin-top:12px">
+        <h2>Scriptorium Upgrades</h2>
+        <div class="upgrades" id="upgrades"></div>
+      </div>
+
+      <div style="margin-top:12px" class="controls">
+        <button id="saveBtn">💾 Save</button>
+        <button id="exportBtn">📤 Export</button>
+        <button id="importBtn">📥 Import</button>
+        <button id="menuBtn">🏠 Main Menu</button>
+      </div>
+
+      <div style="margin-top:16px">
+        <button id="prestige" class="purple" style="width:100%;padding:14px">
+          👑 Shatter the Crown
+        </button>
+        <div class="small" style="margin-top:6px">
+          Confront the source of the curse. This will end the current cycle, but the echoes of your success will empower the next.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h1>🗺️ The Cursed Lands</h1>
+      <div class="lore">
+        Each journey through these lands is a new verse in the same tragic epic. Choose your path wisely, Chronicler. The fate of this cycle rests on the choices made by you and your champion.
+      </div>
+      
+      <div class="chronicle" id="currentChronicle">
+        <strong>Cycle Log:</strong> The ink is still wet on the first page...
+      </div>
+      
+      <div class="dungeon-map" id="dungeonMap"></div>
+
+      <div class="dialogue" id="sceneBox" style="display:none">
+        <div id="sceneText"></div>
+        <div class="choices" id="sceneChoices"></div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
+      
+      <h2>⚔️ Active Encounter</h2>
+      <div id="encounterArea">
+        <div id="encounterInfo" class="small">The path ahead is quiet... for now.</div>
+        <div id="battleUI" style="display:none;margin-top:12px">
+          <div style="margin-top:12px">
+            <strong style="color:var(--danger)" id="enemyName"></strong>
+          </div>
+          <div id="enemyCard" class="card small"></div>
+          <div class="actions" id="battleActions" style="margin-top:12px"></div>
+        </div>
+      </div>
+      
+      <h2>📜 Event Log</h2>
+      <div class="log" id="eventLog"></div>
+    </div>
+
+    <div class="panel right-col">
+      <h1>❤️ Champion's Status</h1>
+       <div id="roster"></div>
+      
+      <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
+      
+      <h2>🎒 Inventory</h2>
+      <div class="small">Items found on your journey. Click to use in combat.</div>
+      <div class="inventory-list" id="inventory"></div>
+      
+       <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
+      
+      <h2>📖 Discovered Lore</h2>
+      <div class="small" id="loreEntries" style="max-height: 200px; overflow-y: auto;">
+        Discover lore scraps to piece together the world's history...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- STATE MANAGEMENT ---
+let state;
+
+function getNewGameState() {
+    return {
+        essence: 0,
+        loreScraps: 0,
+        loops: 1,
+        crownFragments: 0,
+        essencePerClick: 1,
+        essencePerSec: 0,
+        recruitCost: 10,
+        upgrades: [
+            {id: 'quill', name: 'Flowing Quill', cost: 50, desc: 'Your writing becomes swifter. +1 Essence per second.', bought: false, apply: () => state.essencePerSec += 1},
+            {id: 'library', name: 'Expand Library', cost: 200, desc: 'Better research. Start each cycle with a free champion.', bought: false, apply: () => {}},
+            {id: 'scrying', name: 'Scrying Pool', cost: 500, desc: 'Glimpse the future. Reveal one treasure node on each map.', bought: false, apply: () => {}},
+            {id: 'binding', name: 'Tome Binding', cost: 1200, desc: 'Preserve knowledge. Gain +1 Lore Scrap per victory.', bought: false, apply: () => {}},
+        ],
+        roster: [],
+        inventory: [],
+        dungeon: { map: [], currentNode: null },
+        activeEncounter: null,
+        loreUnlocked: [],
+        legacyUpgrades: {
+            essence: 0,
+            championDamage: 0,
+            startingItems: 0,
+        }
+    };
+}
+
+// --- DATA ---
+const championArchetypes = [
+    {
+        id: 'knight', name: 'The Steadfast Knight',
+        lore: 'A forgotten knight, bound by an oath to protect a kingdom that has turned to dust.',
+        hp: 100, maxHp: 100, resolve: 50, maxResolve: 50,
+        skills: [
+            { name: 'Shield Bash', cost: 20, desc: 'Deal 15 damage and Stun the enemy for 1 turn.', effect(enemy) { enemy.hp -= 15; applyStatus(enemy, 'stunned', 2); }},
+            { name: 'Valiant Strike', cost: 10, desc: 'A basic but reliable attack for 10 damage.', effect(enemy) { enemy.hp -= 10; }},
+            { name: 'Hold the Line', cost: 0, desc: 'Recover 15 Resolve, but do nothing else this turn.', effect(enemy, user) { user.resolve += 15; }}
+        ],
+        bond: 0, maxBond: 10, traits: []
+    },
+    {
+        id: 'ranger', name: 'The Wary Ranger',
+        lore: 'A hunter who stalks the cursed woods, knowing the name of every beast and every ghost.',
+        hp: 80, maxHp: 80, resolve: 60, maxResolve: 60,
+        skills: [
+            { name: 'Venom Arrow', cost: 15, desc: 'Deal 5 damage and apply Poison for 3 turns.', effect(enemy) { enemy.hp -= 5; applyStatus(enemy, 'poison', 4); }},
+            { name: 'Aimed Shot', cost: 25, desc: 'A carefully aimed shot for 25 damage.', effect(enemy) { enemy.hp -= 25; }},
+            { name: 'Recuperate', cost: 0, desc: 'Forage for herbs, recovering 15 HP.', effect(enemy, user) { user.hp = Math.min(user.maxHp, user.hp + 15); }}
+        ],
+        bond: 0, maxBond: 10, traits: []
+    },
+];
+
+const enemies = {
+    'husk': { name: 'Ashen Husk', hp: 50, atk: 8, skills: [{ type: 'attack' }] },
+    'wight': { name: 'Sorrow Wight', hp: 40, atk: 6, skills: [{ type: 'attack' }, { type: 'special', effect(target) { target.resolve -= 10; log(`${this.name} drains ${target.name}'s will!`, 'danger'); } }] },
+    'echo': { name: 'Crown\'s Echo', hp: 80, atk: 12, skills: [{ type: 'attack' }, { type: 'attack' }, { type: 'special', effect(target) { applyStatus(target, 'weakened', 2); log(`${this.name} whispers despair, weakening ${target.name}!`, 'danger'); } }] }
+};
+
+const items = {
+    'potion': { name: 'Healing Potion', desc: 'Recovers 30 HP.', use(target) { target.hp = Math.min(target.maxHp, target.hp + 30); log(`${target.name} drinks a Healing Potion.`, 'success'); }},
+    'draught': { name: 'Resolve Draught', desc: 'Recovers 25 Resolve.', use(target) { target.resolve = Math.min(target.maxResolve, target.resolve + 25); log(`${target.name} drinks a Resolve Draught.`, 'success'); }}
+};
+
+// --- DOM ELEMENTS ---
+const elements = {};
+document.addEventListener('DOMContentLoaded', () => {
+    const ids = ['mainMenu', 'gameContainer', 'essence', 'loreScraps', 'champions', 'loops', 'crownFragments',
+                 'upgrades', 'roster', 'inventory', 'dungeonMap', 'battleUI', 'encounterInfo', 'enemyCard',
+                 'enemyName', 'battleActions', 'eventLog', 'currentChronicle', 'loreEntries', 'loadBtn'];
+    ids.forEach(id => elements[id] = document.getElementById(id));
+    
+    // Event Listeners
+    document.getElementById('gather').addEventListener('click', gather);
+    document.getElementById('recruit').addEventListener('click', recruit);
+    document.getElementById('saveBtn').addEventListener('click', saveGame);
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+    document.getElementById('importBtn').addEventListener('click', importData);
+    document.getElementById('menuBtn').addEventListener('click', showMainMenu);
+    document.getElementById('prestige').addEventListener('click', prestige);
+
+    if (!localStorage.getItem('moonbound_intro_save')) {
+        elements.loadBtn.disabled = true;
+    }
+
+    // Start game logic after DOM is fully loaded
+    state = getNewGameState();
+    initGame();
+
+    // Start the main loop *after* the DOM is ready.
+    setInterval(() => {
+        if (state && state.essencePerSec > 0 && elements.gameContainer.style.display === 'block') {
+            state.essence += state.essencePerSec;
+            updateAllUI();
+        }
+    }, 1000);
+});
+
+
+// --- UI UPDATE FUNCTIONS ---
+function updateAllUI() {
+    if (!state || !elements.essence) return; // Guard against running before DOM is ready
+    elements.essence.textContent = Math.floor(state.essence).toLocaleString();
+    elements.loreScraps.textContent = state.loreScraps.toLocaleString();
+    elements.champions.textContent = state.roster.length > 0 ? '1/1' : '0/1';
+    elements.loops.textContent = state.loops.toLocaleString();
+    elements.crownFragments.textContent = state.crownFragments.toLocaleString();
+    
+    updateUpgradesUI();
+    updateRosterUI();
+    updateInventoryUI();
+    updateDungeonMapUI();
+    updateBattleUI();
+    updateLoreUI();
+
+    document.getElementById('recruit').disabled = state.roster.length > 0 || state.essence < state.recruitCost;
+    document.getElementById('recruit').textContent = `🤝 Find a Champion (${state.recruitCost}✒️)`;
+}
+
+function updateRosterUI() {
+    elements.roster.innerHTML = '';
+    if (state.roster.length === 0) {
+        elements.roster.innerHTML = `<div class="card small-muted">No champion has been found for this cycle.</div>`;
+        return;
+    }
+    const char = state.roster[0];
+    const hpClass = char.hp <= 0 ? 'dead' : char.hp < char.maxHp * 0.5 ? 'injured' : 'healthy';
+    let skillsHTML = '';
+    char.skills.forEach(skill => {
+        skillsHTML += `<div class="tooltip small">
+            - ${skill.name} (${skill.cost} Res)
+            <span class="tooltiptext">${skill.desc}</span>
+        </div>`;
+    });
+
+    elements.roster.innerHTML = `
+        <div class="card">
+            <strong>${char.name}</strong>
+            <div class="small-muted">${char.lore}</div>
+            <div class="stat"><div>HP</div><div class="hp ${hpClass}">${char.hp}/${char.maxHp}</div></div>
+            <div class="stat"><div>Resolve</div><div>${char.resolve}/${char.maxResolve}</div></div>
+            <h2>Skills</h2>
+            ${skillsHTML}
+        </div>`;
+}
+
+function updateInventoryUI() {
+    elements.inventory.innerHTML = '';
+    if (state.inventory.length === 0) {
+        elements.inventory.innerHTML = `<div class="small-muted" style="grid-column: 1 / 3;">Your satchel is empty.</div>`;
+        return;
+    }
+    state.inventory.forEach((item, index) => {
+        const itemData = items[item.id];
+        const itemEl = document.createElement('div');
+        itemEl.className = 'card small tooltip';
+        itemEl.style.cursor = 'pointer';
+        itemEl.innerHTML = `
+            ${itemData.name} (x${item.quantity})
+            <span class="tooltiptext">${itemData.desc}</span>`;
+        itemEl.onclick = () => useItem(index);
+        elements.inventory.appendChild(itemEl);
+    });
+}
+
+function updateDungeonMapUI() {
+    elements.dungeonMap.innerHTML = '';
+     if (state.roster.length === 0) {
+        elements.dungeonMap.innerHTML = `<div class="small-muted" style="text-align:center;">Find a champion to explore the cursed lands.</div>`;
+        return;
+    }
+    state.dungeon.map.forEach(node => {
+        const nodeEl = document.createElement('div');
+        nodeEl.className = `node ${node.locked ? 'locked' : ''} ${node.completed ? 'completed' : ''}`;
+        nodeEl.innerHTML = `${node.icon} ${node.name}`;
+        if (!node.locked && !node.completed) {
+            nodeEl.onclick = () => selectNode(node.id);
+        }
+        elements.dungeonMap.appendChild(nodeEl);
+    });
+}
+
+function updateBattleUI() {
+    if (!state.activeEncounter) {
+        elements.battleUI.style.display = 'none';
+        elements.encounterInfo.textContent = 'The path ahead is quiet... for now.';
+        return;
+    }
+    elements.battleUI.style.display = 'block';
+    const enemy = state.activeEncounter.enemy;
+    elements.encounterInfo.textContent = 'You are in combat!';
+    elements.enemyName.textContent = enemy.name;
+    
+    let statusHTML = '';
+    if (enemy.statusEffects && enemy.statusEffects.length > 0) {
+        enemy.statusEffects.forEach(s => {
+            statusHTML += `<span class="status-effect status-${s.type}">${s.type.toUpperCase()} (${s.duration})</span> `;
+        });
+    }
+
+    elements.enemyCard.innerHTML = `HP: ${enemy.hp}/${enemy.maxHp} | ATK: ${enemy.atk} <br> ${statusHTML}`;
+    
+    elements.battleActions.innerHTML = '';
+    const champion = state.roster[0];
+    champion.skills.forEach(skill => {
+        const btn = document.createElement('button');
+        btn.textContent = `${skill.name} (${skill.cost} Res)`;
+        btn.disabled = champion.resolve < skill.cost || champion.hp <= 0;
+        btn.onclick = () => playerTurn(skill);
+        elements.battleActions.appendChild(btn);
+    });
+}
+
+function updateUpgradesUI() {
+  elements.upgrades.innerHTML = '';
+  state.upgrades.forEach(u => {
+    const upEl = document.createElement('div');
+    upEl.className = 'upgrade';
+    upEl.innerHTML = `
+      <div>
+        <strong>${u.name}</strong>
+        <div class="small">${u.desc}</div>
+      </div>
+      <button ${state.essence < u.cost || u.bought ? 'disabled' : ''}>
+        ${u.bought ? 'Purchased' : `✒️ ${u.cost.toLocaleString()}`}
+      </button>
+    `;
+    if (!u.bought) {
+      upEl.querySelector('button').onclick = () => buyUpgrade(u.id);
+    }
+    elements.upgrades.appendChild(upEl);
+  });
+}
+
+function updateLoreUI() {
+    // Implement this function if you want to display discovered lore
+}
+
+
+// --- CORE GAME LOGIC ---
+function gather() {
+    state.essence += state.essencePerClick;
+    updateAllUI();
+}
+
+function recruit() {
+    if (state.essence >= state.recruitCost && state.roster.length === 0) {
+        state.essence -= state.recruitCost;
+        const archetype = JSON.parse(JSON.stringify(championArchetypes[Math.floor(Math.random() * championArchetypes.length)]));
+        state.roster.push(archetype);
+        log(`You have found ${archetype.name}, a lost soul willing to fight.`);
+        generateDungeon();
+        updateAllUI();
+    }
+}
+
+function buyUpgrade(id) {
+  const up = state.upgrades.find(u => u.id === id);
+  if (up && !up.bought && state.essence >= up.cost) {
+    state.essence -= up.cost;
+    up.bought = true;
+    up.apply();
+    log(`Upgraded Scriptorium: ${up.name}!`, 'success');
+    updateAllUI();
+  }
+}
+
+// --- DUNGEON & ENCOUNTER LOGIC ---
+function generateDungeon() {
+    state.dungeon = { map: [], currentNodeId: 0 };
+    const nodeTypes = [
+        { name: 'Combat', icon: '⚔️', type: 'combat' },
+        { name: 'Combat', icon: '⚔️', type: 'combat' },
+        { name: 'Rest Site', icon: '🔥', type: 'rest' },
+        { name: 'Treasure', icon: '💎', type: 'treasure' },
+        { name: 'Elite Combat', icon: '💀', type: 'elite' }
+    ];
+    for (let i = 0; i < 5; i++) {
+        const template = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+        state.dungeon.map.push({
+            id: i,
+            ...template,
+            locked: i > 0,
+            completed: false
+        });
+    }
+    // Final boss
+    state.dungeon.map.push({ id: 5, name: 'Crown\'s Lair', icon: '👑', type: 'boss', locked: true, completed: false });
+    updateDungeonMapUI();
+}
+
+function selectNode(id) {
+    const node = state.dungeon.map.find(n => n.id === id);
+    if (node.completed || node.locked) return;
+
+    // This logic is moved to checkBattleEnd for combat nodes
+    // node.completed = true; 
+    
+    // Unlock next node
+    if (id + 1 < state.dungeon.map.length) {
+        state.dungeon.map[id + 1].locked = false;
+    }
+    
+    log(`You proceed to the ${node.name}.`);
+
+    switch (node.type) {
+        case 'combat':
+            startEncounter(enemies.husk, id);
+            break;
+        case 'elite':
+            startEncounter(enemies.wight, id);
+            break;
+        case 'boss':
+            startEncounter(enemies.echo, id);
+            break;
+        case 'rest':
+            node.completed = true;
+            const champion = state.roster[0];
+            const hpHealed = Math.floor(champion.maxHp * 0.5);
+            const resolveHealed = Math.floor(champion.maxResolve * 0.5);
+            champion.hp = Math.min(champion.maxHp, champion.hp + hpHealed);
+            champion.resolve = Math.min(champion.maxResolve, champion.resolve + resolveHealed);
+            log(`You rest at a campfire, recovering ${hpHealed} HP and ${resolveHealed} Resolve.`, 'success');
+            break;
+        case 'treasure':
+            node.completed = true;
+            const itemKeys = Object.keys(items);
+            const foundItemId = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+            addItem(foundItemId, 1);
+            log(`You found a ${items[foundItemId].name}!`, 'success');
+            break;
+    }
+    updateAllUI();
+}
+
+function startEncounter(enemyTemplate, nodeId) {
+    state.activeEncounter = {
+        nodeId: nodeId,
+        enemy: JSON.parse(JSON.stringify(enemyTemplate)), // Deep copy
+    };
+    state.activeEncounter.enemy.maxHp = state.activeEncounter.enemy.hp; // Set maxHp
+    state.activeEncounter.enemy.statusEffects = [];
+    log(`A wild ${enemyTemplate.name} appears!`, 'danger');
+    updateAllUI();
+}
+
+function playerTurn(skill) {
+    const champion = state.roster[0];
+    const enemy = state.activeEncounter.enemy;
+    if (champion.resolve < skill.cost) return;
+    
+    champion.resolve -= skill.cost;
+    log(`${champion.name} uses ${skill.name}!`);
+    skill.effect(enemy, champion);
+
+    checkBattleEnd() || setTimeout(enemyTurn, 500);
+    updateAllUI();
+}
+
+function enemyTurn() {
+    if (!state.activeEncounter) return;
+    const champion = state.roster[0];
+    const enemy = state.activeEncounter.enemy;
+    
+    if (processStatusEffects(enemy)) { // if stunned
+        checkBattleEnd();
+        updateAllUI();
+        return;
+    }
+
+    const move = enemy.skills[Math.floor(Math.random() * enemy.skills.length)];
+    if (move.type === 'attack') {
+        const damage = enemy.atk;
+        champion.hp -= damage;
+        log(`${enemy.name} attacks ${champion.name} for ${damage} damage.`, 'danger');
+    } else if (move.type === 'special') {
+        move.effect(champion);
+    }
+
+    checkBattleEnd();
+    updateAllUI();
+}
+
+function checkBattleEnd() {
+    if (!state.activeEncounter) return false;
+    const champion = state.roster[0];
+    const enemy = state.activeEncounter.enemy;
+
+    if (enemy.hp <= 0) {
+        log(`You have defeated the ${enemy.name}!`, 'success');
+        
+        const completedNode = state.dungeon.map.find(n => n.id === state.activeEncounter.nodeId);
+        if (completedNode) {
+            completedNode.completed = true;
+            if (completedNode.type === 'boss') {
+                log('The curse weakens! You can now Shatter the Crown.', 'purple');
+                document.getElementById('prestige').disabled = false;
+            }
+        }
+        
+        state.activeEncounter = null;
+        // Add rewards
+        state.essence += 20;
+        state.loreScraps += 1;
+        return true;
+    }
+    if (champion.hp <= 0) {
+        log(`${champion.name} has fallen. This cycle's chronicle ends in tragedy.`, 'danger');
+        state.roster = []; // Champion is lost
+        state.activeEncounter = null;
+        return true;
+    }
+    return false;
+}
+
+function useItem(itemIndex) {
+    if (!state.activeEncounter) {
+        log('You can only use items in combat.');
+        return;
+    }
+    const item = state.inventory[itemIndex];
+    if (item) {
+        items[item.id].use(state.roster[0]);
+        item.quantity--;
+        if (item.quantity <= 0) {
+            state.inventory.splice(itemIndex, 1);
+        }
+        updateAllUI();
+        setTimeout(enemyTurn, 500); // Using an item takes a turn
+    }
+}
+
+// --- UTILITIES & HELPERS ---
+function log(message, type = 'info') {
+    const colorMap = { 'info': 'var(--muted)', 'success': 'var(--success)', 'danger': 'var(--danger)' };
+    elements.eventLog.innerHTML += `<div style="color:${colorMap[type]}">${message}</div>`;
+    elements.eventLog.scrollTop = elements.eventLog.scrollHeight;
+}
+
+function addItem(itemId, quantity) {
+    let existingItem = state.inventory.find(i => i.id === itemId);
+    if (existingItem) {
+        existingItem.quantity += quantity;
+    } else {
+        state.inventory.push({ id: itemId, quantity: quantity });
+    }
+}
+
+function applyStatus(target, type, duration) {
+    // Prevent stacking the same status
+    if (target.statusEffects.some(s => s.type === type)) return;
+    target.statusEffects.push({ type, duration });
+}
+
+function processStatusEffects(target) {
+    let isStunned = false;
+    if (!target.statusEffects) target.statusEffects = [];
+    target.statusEffects.forEach(status => {
+        switch(status.type) {
+            case 'poison':
+                const poisonDmg = 5;
+                target.hp -= poisonDmg;
+                log(`${target.name} takes ${poisonDmg} poison damage.`, 'danger');
+                break;
+            case 'stunned':
+                isStunned = true;
+                log(`${target.name} is stunned and cannot act!`, 'info');
+                break;
+            case 'weakened':
+                // Handled in damage calculation if implemented
+                break;
+        }
+        status.duration--;
+    });
+    target.statusEffects = target.statusEffects.filter(s => s.duration > 0);
+    return isStunned;
+}
+
+// --- GAME STATE & PRESTIGE ---
+function prestige() {
+    // Removed confirm() wrapper
+    const fragmentsGained = Math.floor(state.loreScraps / 5) + 1;
+    log(`You shattered the crown! The world resets, but you gain ${fragmentsGained} Crown Fragments.`, 'purple');
+
+    const oldFragments = state.crownFragments;
+    
+    // Reset state but keep prestige currency
+    state = getNewGameState();
+    state.loops++;
+    state.crownFragments = oldFragments + fragmentsGained;
+    
+    // Re-apply permanent upgrades
+    state.essencePerClick += state.crownFragments; 
+
+    initGame();
+}
+
+function saveGame() {
+    localStorage.setItem('moonbound_intro_save', btoa(JSON.stringify(state)));
+    log('Game Saved.', 'success');
+}
+
+function loadGame() {
+    const saved = localStorage.getItem('moonbound_intro_save');
+    if (saved) {
+        state = JSON.parse(atob(saved));
+        log('Chronicle Loaded.', 'success');
+        showGame();
+        initGame(true);
+    }
+}
+
+function exportData() {
+    const data = btoa(JSON.stringify(state));
+    const textArea = document.createElement("textarea");
+    textArea.value = data;
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        log("Save data copied to clipboard!", 'success');
+    } catch (err) {
+        log("Failed to copy save data.", 'danger');
+    }
+    document.body.removeChild(textArea);
+}
+
+function importData() {
+    log("To import a save, please use the 'Load' button after saving a game.", "info");
+}
+
+
+function startNewGame() {
+    // Removed confirm() wrapper
+    state = getNewGameState();
+    localStorage.removeItem('moonbound_intro_save');
+    showGame();
+    initGame();
+}
+
+function showGame() {
+    elements.mainMenu.style.display = 'none';
+    elements.gameContainer.style.display = 'block';
+}
+
+function showMainMenu() {
+    elements.gameContainer.style.display = 'none';
+    elements.mainMenu.style.display = 'block';
+}
+
+function showHelp() {
+    const helpText = `Welcome, Chronicler!
+- Goal: Guide a champion to defeat the final boss and Shatter the Crown.
+- Gather Temporal Essence by 'Chronicling Events'.
+- Use Essence to 'Find a Champion' and buy 'Scriptorium Upgrades'.
+- Once you have a champion, click nodes on the map to progress.
+- After shattering the crown, you begin a new cycle with powerful 'Crown Fragments'.`;
+    log(helpText.replace(/\n/g, '<br>'));
+}
+
+function initGame(isLoad = false) {
+    if (!isLoad) {
+        log("A new cycle begins. The Ashen Crown's curse holds strong.");
+    }
+    document.getElementById('prestige').disabled = true;
+    updateAllUI();
+}
+
+</script>
+</body>
+</html>
+
