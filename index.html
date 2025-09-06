@@ -195,6 +195,46 @@
     padding: 10px;
     text-align: center;
   }
+  
+  .purple {
+    background: var(--purple) !important;
+    color: white !important;
+  }
+  
+  .purple:hover {
+    background: #9a5bc7 !important;
+  }
+  
+  .info { color: #87ceeb; }
+  .success { color: var(--success); }
+  .danger { color: var(--danger); }
+  .warning { color: #ff9500; }
+  
+  /* Responsive design */
+  @media (max-width: 1200px) {
+    .app {
+      grid-template-columns: 350px 1fr 350px;
+    }
+  }
+  
+  @media (max-width: 900px) {
+    .app {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    
+    .panel {
+      padding: 12px;
+    }
+    
+    .game-title {
+      font-size: 36px;
+    }
+    
+    .menu-buttons {
+      min-width: 250px;
+    }
+  }
 
 </style>
 </head>
@@ -642,7 +682,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- UI UPDATE FUNCTIONS ---
 function updateAllUI() {
-    if (!state || !elements.essence) return;
+    if (!state || !elements.essence) {
+        console.warn('State or elements not properly initialized');
+        return;
+    }
     
     elements.essence.textContent = Math.floor(state.essence).toLocaleString();
     elements.loreScraps.textContent = state.loreScraps.toLocaleString();
@@ -657,7 +700,9 @@ function updateAllUI() {
         const completed = state.dungeon.map.filter(n => n.completed).length;
         progress = Math.floor((completed / state.dungeon.map.length) * 100);
     }
-    elements.chronicleProgress.textContent = progress + '%';
+    if (elements.chronicleProgress) {
+        elements.chronicleProgress.textContent = progress + '%';
+    }
     
     updateUpgradesUI();
     updateLegacyUpgradesUI();
@@ -1216,3 +1261,473 @@ function checkBattleEnd() {
         }
         
         // Discover lore
+        if (Math.random() < 0.2) {
+            const loreFragments = [
+                "The Crown was forged in the heart of a dying star, binding the fate of worlds to its will.",
+                "Ancient texts speak of a time before the curse, when heroes walked freely across the realms.",
+                "The Ashen Crown's power grows with each cycle, feeding on the despair of those trapped within.",
+                "Legends tell of a way to break the cycle, but the knowledge has been lost to time.",
+                "Each champion who falls becomes part of the Crown's eternal guard, doomed to serve forever.",
+                "The Chronicler's role is not to change fate, but to record it - yet some believe this very act can alter destiny.",
+                "In the deepest chambers of the Crown's sanctum, echoes of past victories still resonate with hope.",
+                "The curse began when the last true king refused to accept his mortality, binding his soul to the Crown."
+            ];
+            const newLore = loreFragments[Math.floor(Math.random() * loreFragments.length)];
+            if (!state.loreUnlocked.includes(newLore)) {
+                state.loreUnlocked.push(newLore);
+                log(`You discover ancient lore: "${newLore}"`, 'purple');
+            }
+        }
+        
+        state.activeEncounter = null;
+        updateAllUI();
+    } else if (champion.hp <= 0) {
+        log(`${champion.name} has fallen! The cycle claims another victim.`, 'danger');
+        state.roster = [];
+        state.activeEncounter = null;
+        state.dungeon = { map: [], currentNode: null, floor: 1 };
+        updateAllUI();
+    }
+    
+    return champion.hp <= 0 || enemy.hp <= 0;
+}
+
+function processStatusEffects(target) {
+    if (!target.statusEffects || target.statusEffects.length === 0) return false;
+    
+    let died = false;
+    target.statusEffects = target.statusEffects.filter(status => {
+        status.duration--;
+        
+        switch (status.type) {
+            case 'poison':
+                const poisonDamage = Math.floor(target.maxHp * 0.1);
+                target.hp -= poisonDamage;
+                log(`${target.name} takes ${poisonDamage} poison damage!`, 'danger');
+                break;
+            case 'bleeding':
+                const bleedDamage = Math.floor(target.maxHp * 0.15);
+                target.hp -= bleedDamage;
+                log(`${target.name} bleeds for ${bleedDamage} damage!`, 'danger');
+                break;
+            case 'stunned':
+                log(`${target.name} is stunned and cannot act!`);
+                return false; // Skip this turn
+        }
+        
+        if (target.hp <= 0) died = true;
+        return status.duration > 0;
+    });
+    
+    return died;
+}
+
+function applyStatus(target, type, duration) {
+    if (!target.statusEffects) target.statusEffects = [];
+    
+    // Remove existing status of same type
+    target.statusEffects = target.statusEffects.filter(s => s.type !== type);
+    
+    target.statusEffects.push({ type, duration });
+}
+
+function checkLevelUp(champion) {
+    const expNeeded = champion.level * 100;
+    if (champion.experience >= expNeeded) {
+        champion.experience -= expNeeded;
+        champion.level++;
+        
+        // Level up bonuses
+        const hpGain = 10 + Math.floor(champion.level * 2);
+        const resolveGain = 5 + Math.floor(champion.level * 1.5);
+        
+        champion.maxHp += hpGain;
+        champion.hp += hpGain;
+        champion.maxResolve += resolveGain;
+        champion.resolve += resolveGain;
+        
+        log(`${champion.name} reaches level ${champion.level}! +${hpGain} HP, +${resolveGain} Resolve`, 'success');
+        
+        // Check for more level ups
+        checkLevelUp(champion);
+    }
+}
+
+function addItem(itemId, quantity = 1) {
+    const existing = state.inventory.find(item => item.id === itemId);
+    if (existing) {
+        existing.quantity += quantity;
+    } else {
+        state.inventory.push({ id: itemId, quantity });
+    }
+}
+
+function useItem(index) {
+    if (!state.activeEncounter || index >= state.inventory.length) return;
+    
+    const item = state.inventory[index];
+    const itemData = items[item.id];
+    const champion = state.roster[0];
+    
+    if (itemData.use) {
+        itemData.use(champion, state.activeEncounter.enemy);
+        item.quantity--;
+        
+        if (item.quantity <= 0) {
+            state.inventory.splice(index, 1);
+        }
+        
+        updateAllUI();
+    }
+}
+
+function triggerRandomEvent() {
+    if (state.activeEvent) return;
+    
+    const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+    state.activeEvent = event;
+    
+    elements.eventDialog.style.display = 'block';
+    elements.eventText.textContent = event.text;
+    elements.eventChoices.innerHTML = '';
+    
+    event.choices.forEach((choice, index) => {
+        const btn = document.createElement('button');
+        btn.textContent = choice.text;
+        btn.onclick = () => handleEventChoice(index);
+        elements.eventChoices.appendChild(btn);
+    });
+}
+
+function handleEventChoice(choiceIndex) {
+    const event = state.activeEvent;
+    const choice = event.choices[choiceIndex];
+    
+    // Check costs
+    let canAfford = true;
+    if (choice.cost) {
+        if (choice.cost.essence && state.essence < choice.cost.essence) canAfford = false;
+        if (choice.cost.resolve && state.roster.length > 0 && state.roster[0].resolve < choice.cost.resolve) canAfford = false;
+    }
+    
+    if (!canAfford) {
+        log("You cannot afford this choice.", 'danger');
+        return;
+    }
+    
+    // Pay costs
+    if (choice.cost) {
+        if (choice.cost.essence) state.essence -= choice.cost.essence;
+        if (choice.cost.resolve && state.roster.length > 0) state.roster[0].resolve -= choice.cost.resolve;
+    }
+    
+    // Apply rewards
+    if (choice.reward) {
+        if (choice.reward.essence) state.essence += choice.reward.essence;
+        if (choice.reward.lore) state.loreScraps += choice.reward.lore;
+        if (choice.reward.experience && state.roster.length > 0) {
+            state.roster[0].experience += choice.reward.experience;
+            checkLevelUp(state.roster[0]);
+        }
+        if (choice.reward.championHeal && state.roster.length > 0) {
+            const champion = state.roster[0];
+            const healing = Math.floor(champion.maxHp * choice.reward.championHeal);
+            champion.hp = Math.min(champion.maxHp, champion.hp + healing);
+            log(`${champion.name} recovers ${healing} HP.`, 'success');
+        }
+        if (choice.reward.item) {
+            if (choice.reward.item === 'random') {
+                const itemPool = Object.keys(items);
+                const randomItem = itemPool[Math.floor(Math.random() * itemPool.length)];
+                addItem(randomItem, 1);
+                log(`You receive: ${items[randomItem].name}!`, 'success');
+            } else {
+                addItem(choice.reward.item, 1);
+                log(`You receive: ${items[choice.reward.item].name}!`, 'success');
+            }
+        }
+    }
+    
+    log(`Event: ${event.title} - ${choice.text}`, 'info');
+    
+    elements.eventDialog.style.display = 'none';
+    state.activeEvent = null;
+    updateAllUI();
+}
+
+function canPrestige() {
+    return state.dungeon.map.length > 0 && 
+           state.dungeon.map.every(node => node.completed) && 
+           state.roster.length > 0;
+}
+
+function prestige() {
+    if (!canPrestige()) return;
+    
+    const champion = state.roster[0];
+    const fragmentsGained = Math.floor(state.victories * 0.1) + Math.floor(state.loreScraps * 0.05) + 1;
+    
+    state.crownFragments += fragmentsGained;
+    state.loops++;
+    
+    log(`The Crown shatters! You gain ${fragmentsGained} Crown Fragments and begin cycle ${state.loops}.`, 'purple');
+    
+    // Reset for new cycle
+    state.roster = [];
+    state.inventory = [];
+    state.dungeon = { map: [], currentNode: null, floor: 1 };
+    state.activeEncounter = null;
+    state.activeEvent = null;
+    state.essence = 0;
+    state.loreScraps = 0;
+    state.victories = 0;
+    
+    // Increase recruit cost
+    state.recruitCost = Math.floor(state.recruitCost * 1.5);
+    
+    updateAllUI();
+}
+
+// --- SAVE/LOAD SYSTEM ---
+function saveGame() {
+    const saveData = {
+        ...state,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('moonbound_save', JSON.stringify(saveData));
+    log('Game saved successfully!', 'success');
+}
+
+function loadGame() {
+    const saveData = localStorage.getItem('moonbound_save');
+    if (saveData) {
+        try {
+            state = JSON.parse(saveData);
+            log('Game loaded successfully!', 'success');
+            updateAllUI();
+        } catch (e) {
+            log('Failed to load save data.', 'danger');
+        }
+    }
+}
+
+function exportData() {
+    const saveData = {
+        ...state,
+        timestamp: Date.now()
+    };
+    const dataStr = JSON.stringify(saveData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `moonbound_save_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    log('Save data exported!', 'success');
+}
+
+function importData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const saveData = JSON.parse(e.target.result);
+                    state = saveData;
+                    log('Save data imported successfully!', 'success');
+                    updateAllUI();
+                } catch (err) {
+                    log('Failed to import save data.', 'danger');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    input.click();
+}
+
+// --- MENU FUNCTIONS ---
+function startNewGame() {
+    state = getNewGameState();
+    elements.mainMenu.style.display = 'none';
+    elements.gameContainer.style.display = 'block';
+    initGame();
+    log('A new chronicle begins...', 'info');
+}
+
+function showMainMenu() {
+    elements.mainMenu.style.display = 'flex';
+    elements.gameContainer.style.display = 'none';
+}
+
+function showHelp() {
+    const helpText = `Moonbound: Echoes of the Ashen Crown
+
+HOW TO PLAY:
+• Click "Chronicle Events" to gather Temporal Essence
+• Use Essence to recruit Champions and upgrade your Scriptorium
+• Guide your Champion through the Cursed Lands
+• Complete all nodes to face the Crown's Echo
+• Shatter the Crown to gain Crown Fragments and start a new cycle
+• Use Crown Fragments for permanent Legacy Upgrades
+
+COMBAT:
+• Use your Champion's skills to defeat enemies
+• Manage Resolve (mana) and HP carefully
+• Use items from your inventory during combat
+• Status effects can help or hinder you
+
+KEYBOARD SHORTCUTS:
+• G - Chronicle Events (gather essence)
+• R - Recruit Champion (when available)
+• Ctrl+S - Save Game
+
+GOAL:
+Break the endless cycle by growing powerful enough to permanently destroy the Ashen Crown!
+
+DEBUG:
+• Open browser console and type debugState() to see current game state`;
+
+    // Create a modal dialog instead of alert
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 1000;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: var(--panel); padding: 30px; border-radius: 15px;
+        max-width: 600px; max-height: 80vh; overflow-y: auto;
+        border: 2px solid var(--accent); color: #efece6;
+        font-family: Georgia, serif; line-height: 1.6;
+    `;
+    
+    content.innerHTML = `
+        <h2 style="color: var(--accent); margin-top: 0;">${helpText.replace(/\n/g, '<br>')}</h2>
+        <button onclick="this.parentElement.parentElement.remove()" 
+                style="background: var(--accent); border: none; padding: 10px 20px; 
+                       border-radius: 8px; color: #241305; font-weight: bold; cursor: pointer; margin-top: 20px;">
+            Close
+        </button>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // Close on click outside
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+    };
+}
+
+function initGame() {
+    try {
+        updateAllUI();
+        
+        // Add some initial lore if starting fresh
+        if (state.loreUnlocked.length === 0) {
+            state.loreUnlocked.push("The Chronicler's duty is to record the endless cycles, but perhaps this very act can change fate itself.");
+        }
+        
+        console.log('Game initialized with state:', state);
+    } catch (error) {
+        console.error('Error in initGame:', error);
+    }
+}
+
+function log(message, type = 'info') {
+    if (!elements.eventLog) {
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        return;
+    }
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = document.createElement('div');
+    logEntry.className = `small ${type}`;
+    logEntry.textContent = `[${timestamp}] ${message}`;
+    
+    elements.eventLog.appendChild(logEntry);
+    elements.eventLog.scrollTop = elements.eventLog.scrollHeight;
+    
+    // Limit log entries
+    while (elements.eventLog.children.length > 100) {
+        elements.eventLog.removeChild(elements.eventLog.firstChild);
+    }
+}
+
+// Utility function for debugging
+function debugState() {
+    console.log('Current game state:', {
+        essence: state.essence,
+        loreScraps: state.loreScraps,
+        loops: state.loops,
+        crownFragments: state.crownFragments,
+        roster: state.roster.length,
+        inventory: state.inventory.length,
+        dungeon: state.dungeon.map.length,
+        activeEncounter: !!state.activeEncounter,
+        activeEvent: !!state.activeEvent
+    });
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (elements.gameContainer.style.display === 'block') {
+        switch(e.key) {
+            case 'g':
+            case 'G':
+                if (!e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    gather();
+                }
+                break;
+            case 'r':
+            case 'R':
+                if (!e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    if (state.roster.length === 0 && state.essence >= state.recruitCost) {
+                        recruit();
+                    }
+                }
+                break;
+            case 's':
+            case 'S':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    saveGame();
+                }
+                break;
+        }
+    }
+});
+
+// Initialize the game when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        // Check for existing save
+        if (localStorage.getItem('moonbound_save')) {
+            if (elements.loadBtn) {
+                elements.loadBtn.disabled = false;
+            }
+        }
+        
+        // Initialize state if not already done
+        if (!state) {
+            state = getNewGameState();
+        }
+        
+        console.log('Moonbound game initialized successfully');
+    } catch (error) {
+        console.error('Error initializing game:', error);
+    }
+});
+</script>
+</body>
+</html>
