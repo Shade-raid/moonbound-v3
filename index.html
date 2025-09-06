@@ -172,6 +172,9 @@
   .status-weakened { color: #f0e68c; background: rgba(240, 230, 140, 0.2); }
   .status-bleeding { color: #ff6b6b; background: rgba(255, 107, 107, 0.2); }
   .status-shielded { color: #87ceeb; background: rgba(135, 206, 235, 0.2); }
+  .status-inspired { color: #ffd700; background: rgba(255, 215, 0, 0.2); }
+  .status-evasion { color: #dda0dd; background: rgba(221, 160, 221, 0.2); }
+  .status-focused { color: #98fb98; background: rgba(152, 251, 152, 0.2); }
   
   .event-card{
     background: rgba(255,255,255,0.05);
@@ -423,24 +426,37 @@ const championArchetypes = [
     {
         id: 'knight', name: 'The Steadfast Knight',
         lore: 'A forgotten knight, bound by an oath to protect a kingdom that has turned to dust.',
-        hp: 100, maxHp: 100, resolve: 50, maxResolve: 50,
+        hp: 120, maxHp: 120, resolve: 60, maxResolve: 60, armor: 5, dodge: 3,
         experience: 0, level: 1,
         skills: [
-            { name: 'Shield Bash', cost: 20, desc: 'Deal 15 damage and Stun the enemy for 2 turns.', effect(enemy, user) { 
-                let damage = 15 + (user.level - 1) * 3;
+            { name: 'Shield Bash', cost: 20, desc: 'Deal 20 damage and Stun the enemy for 2 turns. High chance to crit.', effect(enemy, user) { 
+                let baseDamage = 20 + (user.level - 1) * 4;
+                let critChance = 30 + (user.level * 2);
+                let isCrit = Math.random() * 100 < critChance;
+                let damage = isCrit ? Math.floor(baseDamage * 1.5) : baseDamage;
+                damage = calculateDamage(user, enemy, damage);
+                
                 enemy.hp -= damage; 
                 applyStatus(enemy, 'stunned', 2); 
-                log(`${user.name} deals ${damage} damage and stuns the enemy!`);
+                log(`${user.name} deals ${damage} damage${isCrit ? ' (CRITICAL!)' : ''} and stuns the enemy!`);
             }},
-            { name: 'Valiant Strike', cost: 10, desc: 'A reliable attack that grows stronger with experience.', effect(enemy, user) { 
-                let damage = 10 + (user.level - 1) * 2;
+            { name: 'Valiant Strike', cost: 12, desc: 'A powerful attack that deals more damage when you\'re low on HP.', effect(enemy, user) { 
+                let baseDamage = 15 + (user.level - 1) * 3;
+                let hpPercent = user.hp / user.maxHp;
+                let damage = Math.floor(baseDamage * (1.5 - hpPercent)); // More damage when low HP
                 enemy.hp -= damage;
-                log(`${user.name} deals ${damage} damage!`);
+                log(`${user.name} strikes with desperate courage for ${damage} damage!`);
             }},
-            { name: 'Hold the Line', cost: 0, desc: 'Recover Resolve and gain Shield for 3 turns.', effect(enemy, user) { 
-                user.resolve += 15; 
-                applyStatus(user, 'shielded', 3);
-                log(`${user.name} recovers resolve and raises their shield!`);
+            { name: 'Hold the Line', cost: 0, desc: 'Recover 20 Resolve and gain Shield for 4 turns. Also heals 10 HP.', effect(enemy, user) { 
+                user.resolve = Math.min(user.maxResolve, user.resolve + 20); 
+                user.hp = Math.min(user.maxHp, user.hp + 10);
+                applyStatus(user, 'shielded', 4);
+                log(`${user.name} recovers resolve, heals slightly, and raises their shield!`);
+            }},
+            { name: 'Rallying Cry', cost: 30, desc: 'Inspire yourself, gaining +50% damage for 3 turns and recovering 15 HP.', effect(enemy, user) { 
+                user.hp = Math.min(user.maxHp, user.hp + 15);
+                applyStatus(user, 'inspired', 3);
+                log(`${user.name} rallies their spirit, gaining inspiration and healing!`);
             }}
         ],
         bond: 0, maxBond: 100, traits: ['Stalwart', 'Protective']
@@ -448,25 +464,34 @@ const championArchetypes = [
     {
         id: 'ranger', name: 'The Wary Ranger',
         lore: 'A hunter who stalks the cursed woods, knowing the name of every beast and every ghost.',
-        hp: 80, maxHp: 80, resolve: 60, maxResolve: 60,
+        hp: 90, maxHp: 90, resolve: 70, maxResolve: 70, armor: 2, dodge: 12,
         experience: 0, level: 1,
         skills: [
-            { name: 'Venom Arrow', cost: 15, desc: 'Deal damage and apply Poison for 4 turns.', effect(enemy, user) { 
-                let damage = 5 + Math.floor((user.level - 1) * 1.5);
+            { name: 'Venom Arrow', cost: 18, desc: 'Deal 12 damage and apply Poison for 4 turns. Ignores armor.', effect(enemy, user) { 
+                let damage = 12 + Math.floor((user.level - 1) * 2.5);
                 enemy.hp -= damage; 
                 applyStatus(enemy, 'poison', 4); 
-                log(`${user.name} shoots a poisoned arrow for ${damage} damage!`);
+                log(`${user.name} shoots a poisoned arrow for ${damage} damage (ignores armor)!`);
             }},
-            { name: 'Aimed Shot', cost: 25, desc: 'A carefully aimed shot that increases in power.', effect(enemy, user) { 
-                let damage = 25 + (user.level - 1) * 4;
+            { name: 'Aimed Shot', cost: 25, desc: 'A precise shot with high crit chance. Deals 25+ damage.', effect(enemy, user) { 
+                let baseDamage = 25 + (user.level - 1) * 5;
+                let critChance = 40 + (user.level * 3);
+                let isCrit = Math.random() * 100 < critChance;
+                let damage = isCrit ? Math.floor(baseDamage * 1.8) : baseDamage;
                 enemy.hp -= damage;
-                log(`${user.name} lands a precise shot for ${damage} damage!`);
+                log(`${user.name} lands a precise shot for ${damage} damage${isCrit ? ' (CRITICAL!)' : ''}!`);
             }},
-            { name: 'Recuperate', cost: 0, desc: 'Forage for herbs, recovering HP and curing status effects.', effect(enemy, user) { 
-                let healing = 15 + (user.level - 1) * 3;
+            { name: 'Recuperate', cost: 0, desc: 'Forage for herbs, recovering 20 HP and curing all debuffs.', effect(enemy, user) { 
+                let healing = 20 + (user.level - 1) * 4;
                 user.hp = Math.min(user.maxHp, user.hp + healing); 
-                user.statusEffects = user.statusEffects?.filter(s => s.type === 'shielded') || [];
-                log(`${user.name} recovers ${healing} HP and clears debuffs!`);
+                user.statusEffects = user.statusEffects?.filter(s => s.type === 'shielded' || s.type === 'inspired') || [];
+                log(`${user.name} recovers ${healing} HP and clears all debuffs!`);
+            }},
+            { name: 'Evasive Shot', cost: 22, desc: 'Shoot while dodging, dealing 18 damage and gaining +20 dodge for 2 turns.', effect(enemy, user) { 
+                let damage = 18 + (user.level - 1) * 3;
+                enemy.hp -= damage;
+                applyStatus(user, 'evasive', 2);
+                log(`${user.name} shoots while evading for ${damage} damage and becomes harder to hit!`);
             }}
         ],
         bond: 0, maxBond: 100, traits: ['Swift', 'Keen-Eyed']
@@ -474,22 +499,30 @@ const championArchetypes = [
     {
         id: 'mage', name: 'The Exiled Scholar',
         lore: 'Once a court wizard, now a wanderer seeking redemption through forbidden knowledge.',
-        hp: 60, maxHp: 60, resolve: 80, maxResolve: 80,
+        hp: 70, maxHp: 70, resolve: 100, maxResolve: 100, armor: 1, dodge: 8,
         experience: 0, level: 1,
         skills: [
-            { name: 'Arcane Bolt', cost: 12, desc: 'Launch magical energy that pierces defenses.', effect(enemy, user) { 
-                let damage = 12 + (user.level - 1) * 3;
+            { name: 'Arcane Bolt', cost: 15, desc: 'Launch magical energy that pierces armor. Deals 18+ damage.', effect(enemy, user) { 
+                let damage = 18 + (user.level - 1) * 4;
                 enemy.hp -= damage;
-                log(`${user.name} casts Arcane Bolt for ${damage} damage!`);
+                log(`${user.name} casts Arcane Bolt for ${damage} damage (ignores armor)!`);
             }},
-            { name: 'Weaken', cost: 18, desc: 'Curse the enemy, reducing their damage for 4 turns.', effect(enemy, user) { 
+            { name: 'Weaken', cost: 20, desc: 'Curse the enemy, reducing their damage by 40% for 4 turns.', effect(enemy, user) { 
                 applyStatus(enemy, 'weakened', 4);
-                log(`${user.name} hexes the enemy, weakening their attacks!`);
+                log(`${user.name} hexes the enemy, severely weakening their attacks!`);
             }},
-            { name: 'Meditate', cost: 0, desc: 'Focus magical energy, recovering Resolve.', effect(enemy, user) { 
-                let recovery = 20 + (user.level - 1) * 3;
+            { name: 'Meditate', cost: 0, desc: 'Focus magical energy, recovering 25 Resolve and gaining +1 resolve per turn for 3 turns.', effect(enemy, user) { 
+                let recovery = 25 + (user.level - 1) * 4;
                 user.resolve = Math.min(user.maxResolve, user.resolve + recovery);
-                log(`${user.name} meditates and recovers ${recovery} Resolve!`);
+                applyStatus(user, 'focused', 3);
+                log(`${user.name} meditates and recovers ${recovery} Resolve, entering a focused state!`);
+            }},
+            { name: 'Mana Burn', cost: 35, desc: 'Drain enemy resolve and deal damage equal to half the drained amount.', effect(enemy, user) { 
+                let drain = Math.min(30, enemy.resolve || 0);
+                enemy.resolve = Math.max(0, (enemy.resolve || 0) - drain);
+                let damage = Math.floor(drain / 2);
+                enemy.hp -= damage;
+                log(`${user.name} burns the enemy\'s resolve for ${drain} points, dealing ${damage} damage!`);
             }}
         ],
         bond: 0, maxBond: 100, traits: ['Scholarly', 'Mystic']
@@ -498,55 +531,93 @@ const championArchetypes = [
 
 const enemies = {
     'husk': { 
-        name: 'Ashen Husk', hp: 50, maxHp: 50, atk: 8, 
+        name: 'Ashen Husk', hp: 80, maxHp: 80, atk: 12, armor: 2, dodge: 5,
         skills: [
-            { type: 'attack', desc: 'A shambling attack' },
-            { type: 'special', desc: 'Drain life', effect(target) { 
-                let damage = 5;
+            { type: 'attack', desc: 'Claw swipe', damage: 1.0, critChance: 10 },
+            { type: 'special', desc: 'Life drain', effect(target) { 
+                let damage = 8 + Math.floor(Math.random() * 5);
                 target.hp -= damage; 
-                this.hp = Math.min(this.maxHp, this.hp + Math.floor(damage/2));
+                this.hp = Math.min(this.maxHp, this.hp + Math.floor(damage * 0.6));
                 log(`${this.name} drains ${damage} life from ${target.name}!`, 'danger'); 
+            }},
+            { type: 'special', desc: 'Corrupting touch', effect(target) { 
+                applyStatus(target, 'poison', 3);
+                log(`${this.name} corrupts ${target.name} with its touch!`, 'danger'); 
             }}
         ],
         statusEffects: []
     },
     'wight': { 
-        name: 'Sorrow Wight', hp: 70, maxHp: 70, atk: 12, 
+        name: 'Sorrow Wight', hp: 120, maxHp: 120, atk: 16, armor: 3, dodge: 8,
         skills: [
-            { type: 'attack', desc: 'Spectral claws' },
+            { type: 'attack', desc: 'Spectral claws', damage: 1.2, critChance: 15 },
             { type: 'special', desc: 'Despair aura', effect(target) { 
-                target.resolve -= 15; 
-                applyStatus(target, 'weakened', 2);
+                target.resolve -= 20; 
+                applyStatus(target, 'weakened', 3);
                 log(`${this.name} emanates despair, draining will and strength!`, 'danger'); 
+            }},
+            { type: 'special', desc: 'Phantom strike', effect(target) { 
+                let damage = 20 + Math.floor(Math.random() * 10);
+                target.hp -= damage;
+                log(`${this.name} phases through defenses for ${damage} damage!`, 'danger'); 
             }}
         ],
         statusEffects: []
     },
     'echo': { 
-        name: 'Crown\'s Echo', hp: 120, maxHp: 120, atk: 18, 
+        name: 'Crown\'s Echo', hp: 200, maxHp: 200, atk: 25, armor: 5, dodge: 12,
         skills: [
-            { type: 'attack', desc: 'Crushing blow' },
+            { type: 'attack', desc: 'Crushing blow', damage: 1.5, critChance: 20 },
             { type: 'special', desc: 'Curse of ages', effect(target) { 
-                applyStatus(target, 'bleeding', 3);
-                applyStatus(target, 'weakened', 3);
+                applyStatus(target, 'bleeding', 4);
+                applyStatus(target, 'weakened', 4);
                 log(`${this.name} inflicts ancient curses!`, 'danger'); 
             }},
             { type: 'special', desc: 'Royal command', effect(target) { 
-                let damage = 25;
+                let damage = 30 + Math.floor(Math.random() * 15);
                 target.hp -= damage;
-                target.resolve -= 20;
+                target.resolve -= 25;
                 log(`${this.name} commands obedience, dealing ${damage} damage and draining resolve!`, 'danger'); 
+            }},
+            { type: 'special', desc: 'Crown\'s wrath', effect(target) { 
+                let damage = 40;
+                target.hp -= damage;
+                applyStatus(target, 'stunned', 1);
+                log(`${this.name} unleashes the Crown\'s wrath for ${damage} damage!`, 'danger'); 
             }}
         ],
         statusEffects: []
     },
     'sentinel': {
-        name: 'Stone Sentinel', hp: 90, maxHp: 90, atk: 15,
+        name: 'Stone Sentinel', hp: 150, maxHp: 150, atk: 20, armor: 8, dodge: 3,
         skills: [
-            { type: 'attack', desc: 'Boulder strike' },
+            { type: 'attack', desc: 'Boulder strike', damage: 1.3, critChance: 12 },
             { type: 'special', desc: 'Fortify', effect(target) {
-                applyStatus(this, 'shielded', 3);
+                applyStatus(this, 'shielded', 4);
                 log(`${this.name} hardens its defenses!`, 'info');
+            }},
+            { type: 'special', desc: 'Earthquake', effect(target) { 
+                let damage = 25;
+                target.hp -= damage;
+                applyStatus(target, 'stunned', 2);
+                log(`${this.name} causes the ground to shake for ${damage} damage!`, 'danger'); 
+            }}
+        ],
+        statusEffects: []
+    },
+    'shadowbeast': {
+        name: 'Shadow Beast', hp: 100, maxHp: 100, atk: 18, armor: 1, dodge: 15,
+        skills: [
+            { type: 'attack', desc: 'Shadow bite', damage: 1.1, critChance: 25 },
+            { type: 'special', desc: 'Shadow step', effect(target) { 
+                applyStatus(this, 'shielded', 2);
+                log(`${this.name} melts into shadows, gaining protection!`, 'info'); 
+            }},
+            { type: 'special', desc: 'Dark howl', effect(target) { 
+                let damage = 15;
+                target.hp -= damage;
+                target.resolve -= 15;
+                log(`${this.name} lets out a terrifying howl for ${damage} damage!`, 'danger'); 
             }}
         ],
         statusEffects: []
@@ -815,28 +886,53 @@ function updateBattleUI() {
     
     elements.battleUI.style.display = 'block';
     const enemy = state.activeEncounter.enemy;
-    elements.encounterInfo.textContent = 'You are in combat!';
+    const champion = state.roster[0];
+    
+    elements.encounterInfo.textContent = '⚔️ You are in combat!';
     elements.enemyName.textContent = enemy.name;
     
-    let statusHTML = '';
+    let enemyStatusHTML = '';
     if (enemy.statusEffects && enemy.statusEffects.length > 0) {
         enemy.statusEffects.forEach(s => {
-            statusHTML += `<span class="status-effect status-${s.type}">${s.type.toUpperCase()} (${s.duration})</span> `;
+            enemyStatusHTML += `<span class="status-effect status-${s.type}">${s.type.toUpperCase()} (${s.duration})</span> `;
+        });
+    }
+
+    let championStatusHTML = '';
+    if (champion.statusEffects && champion.statusEffects.length > 0) {
+        champion.statusEffects.forEach(s => {
+            championStatusHTML += `<span class="status-effect status-${s.type}">${s.type.toUpperCase()} (${s.duration})</span> `;
         });
     }
 
     const showHP = state.upgrades.find(u => u.id === 'scrying' && u.bought);
     const hpDisplay = showHP ? `HP: ${enemy.hp}/${enemy.maxHp} | ` : '';
+    const armorDisplay = enemy.armor ? ` | ARMOR: ${enemy.armor}` : '';
+    const dodgeDisplay = enemy.dodge ? ` | DODGE: ${enemy.dodge}%` : '';
     
-    elements.enemyCard.innerHTML = `${hpDisplay}ATK: ${enemy.atk} <br> ${statusHTML}`;
+    elements.enemyCard.innerHTML = `
+        <div style="margin-bottom: 8px;">
+            ${hpDisplay}ATK: ${enemy.atk}${armorDisplay}${dodgeDisplay}
+        </div>
+        <div style="margin-bottom: 8px;">
+            <strong>Enemy Status:</strong> ${enemyStatusHTML || 'None'}
+        </div>
+        <div>
+            <strong>Your Status:</strong> ${championStatusHTML || 'None'}
+        </div>
+    `;
     
     elements.battleActions.innerHTML = '';
-    const champion = state.roster[0];
     champion.skills.forEach(skill => {
         const btn = document.createElement('button');
         btn.textContent = `${skill.name} (${skill.cost} Res)`;
         btn.disabled = champion.resolve < skill.cost || champion.hp <= 0;
         btn.onclick = () => playerTurn(skill);
+        
+        // Add tooltip for skill description
+        btn.className = 'tooltip';
+        btn.title = skill.desc;
+        
         elements.battleActions.appendChild(btn);
     });
 }
@@ -1058,11 +1154,13 @@ function selectNode(id) {
 
     switch (node.type) {
         case 'combat':
-            const enemyType = Math.random() < 0.7 ? 'husk' : Math.random() < 0.8 ? 'wight' : 'sentinel';
+            const enemyTypes = ['husk', 'wight', 'shadowbeast'];
+            const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
             startEncounter(enemies[enemyType], id);
             break;
         case 'elite':
-            const eliteType = Math.random() < 0.6 ? 'wight' : 'sentinel';
+            const eliteTypes = ['wight', 'sentinel', 'shadowbeast'];
+            const eliteType = eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
             startEncounter(enemies[eliteType], id);
             break;
         case 'boss':
@@ -1170,7 +1268,7 @@ function playerTurn(skill) {
     processStatusEffects(champion);
     
     if (!checkBattleEnd()) {
-        setTimeout(enemyTurn, 800);
+        setTimeout(enemyTurn, 1000);
     }
     updateAllUI();
 }
@@ -1187,24 +1285,57 @@ function enemyTurn() {
         return;
     }
 
-    const move = enemy.skills[Math.floor(Math.random() * enemy.skills.length)];
+    // Smart enemy AI - choose moves based on situation
+    let move;
+    const championHpPercent = champion.hp / champion.maxHp;
+    const enemyHpPercent = enemy.hp / enemy.maxHp;
+    
+    // If enemy is low on HP, more likely to use special abilities
+    if (enemyHpPercent < 0.3 && Math.random() < 0.7) {
+        const specialMoves = enemy.skills.filter(s => s.type === 'special');
+        if (specialMoves.length > 0) {
+            move = specialMoves[Math.floor(Math.random() * specialMoves.length)];
+        } else {
+            move = enemy.skills[Math.floor(Math.random() * enemy.skills.length)];
+        }
+    } else {
+        move = enemy.skills[Math.floor(Math.random() * enemy.skills.length)];
+    }
     
     if (move.type === 'attack') {
-        let damage = enemy.atk;
+        let baseDamage = enemy.atk;
+        if (move.damage) baseDamage = Math.floor(baseDamage * move.damage);
+        
+        // Check for critical hit
+        let isCrit = false;
+        if (move.critChance && Math.random() * 100 < move.critChance) {
+            isCrit = true;
+            baseDamage = Math.floor(baseDamage * 1.5);
+        }
         
         // Check if enemy is weakened
         if (enemy.statusEffects?.some(s => s.type === 'weakened')) {
-            damage = Math.floor(damage * 0.7);
+            baseDamage = Math.floor(baseDamage * 0.6);
         }
         
         // Check if champion is shielded
         if (champion.statusEffects?.some(s => s.type === 'shielded')) {
-            damage = Math.floor(damage * 0.5);
+            baseDamage = Math.floor(baseDamage * 0.5);
             log(`${champion.name}'s shield absorbs half the damage!`);
         }
         
-        champion.hp -= damage;
-        log(`${enemy.name} attacks for ${damage} damage.`, 'danger');
+        // Check for dodge
+        let dodgeChance = (champion.dodge || 0);
+        if (champion.statusEffects?.some(s => s.type === 'evasive')) {
+            dodgeChance += 20;
+        }
+        
+        if (Math.random() * 100 < dodgeChance) {
+            log(`${champion.name} dodges ${enemy.name}'s attack!`, 'success');
+        } else {
+            champion.hp -= baseDamage;
+            log(`${enemy.name} attacks for ${baseDamage} damage${isCrit ? ' (CRITICAL!)' : ''}.`, 'danger');
+        }
     } else if (move.type === 'special') {
         move.effect.call(enemy, champion);
     }
@@ -1301,18 +1432,25 @@ function processStatusEffects(target) {
         
         switch (status.type) {
             case 'poison':
-                const poisonDamage = Math.floor(target.maxHp * 0.1);
+                const poisonDamage = Math.floor(target.maxHp * 0.12);
                 target.hp -= poisonDamage;
                 log(`${target.name} takes ${poisonDamage} poison damage!`, 'danger');
                 break;
             case 'bleeding':
-                const bleedDamage = Math.floor(target.maxHp * 0.15);
+                const bleedDamage = Math.floor(target.maxHp * 0.18);
                 target.hp -= bleedDamage;
                 log(`${target.name} bleeds for ${bleedDamage} damage!`, 'danger');
                 break;
             case 'stunned':
                 log(`${target.name} is stunned and cannot act!`);
                 return false; // Skip this turn
+            case 'focused':
+                // Mage gains resolve each turn
+                if (target.resolve !== undefined) {
+                    target.resolve = Math.min(target.maxResolve, target.resolve + 1);
+                    log(`${target.name} maintains focus, gaining 1 resolve.`);
+                }
+                break;
         }
         
         if (target.hp <= 0) died = true;
@@ -1329,6 +1467,27 @@ function applyStatus(target, type, duration) {
     target.statusEffects = target.statusEffects.filter(s => s.type !== type);
     
     target.statusEffects.push({ type, duration });
+}
+
+// Helper function to calculate damage with armor and status effects
+function calculateDamage(attacker, target, baseDamage) {
+    let damage = baseDamage;
+    
+    // Apply armor reduction
+    if (target.armor) {
+        damage = Math.max(1, damage - target.armor);
+    }
+    
+    // Apply status effect modifiers
+    if (attacker.statusEffects?.some(s => s.type === 'inspired')) {
+        damage = Math.floor(damage * 1.5);
+    }
+    
+    if (target.statusEffects?.some(s => s.type === 'weakened')) {
+        damage = Math.floor(damage * 1.2); // Weakened enemies take more damage
+    }
+    
+    return Math.max(1, damage);
 }
 
 function checkLevelUp(champion) {
