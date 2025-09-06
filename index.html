@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Intro to Moonbound: Echoes of the Ashen Crown</title>
+<title>Moonbound: Echoes of the Ashen Crown</title>
 <style>
   :root{--bg:#05060a;--panel:#0d1014;--accent:#b77a3a;--muted:#9aa0aa;--dialog:#0b1220;--danger:#c14242;--success:#4a9c2d;--purple:#8a4fbe;--gold:#d4924a}
   body{margin:0;font-family:Georgia,serif;background:linear-gradient(180deg,#02040a 0%, #08121a 100%);color:#efece6;font-size:14px}
@@ -146,7 +146,8 @@
   .node:hover{background:rgba(183,122,58,0.1);transform:translateY(-2px)}
   .node.locked{opacity:0.4;cursor:not-allowed}
   .node.locked:hover{transform:none;background:rgba(255,255,255,0.03)}
-  .node.completed{border: 2px solid var(--accent); opacity: 0.6;}
+  .node.completed{border: 2px solid var(--accent); opacity: 0.7;}
+  .node.current{border: 2px solid var(--gold); background:rgba(212,146,74,0.1);}
   .card{background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.05)}
   .dialogue{background:var(--dialog);padding:18px;border-radius:14px;margin-top:12px;min-height:140px;border:1px solid rgba(255,255,255,0.1)}
   .choices{display:flex;flex-direction:column;gap:10px;margin-top:12px}
@@ -169,6 +170,31 @@
   .status-poison { color: #90ee90; background: rgba(144, 238, 144, 0.2); }
   .status-stunned { color: #add8e6; background: rgba(173, 216, 230, 0.2); }
   .status-weakened { color: #f0e68c; background: rgba(240, 230, 140, 0.2); }
+  .status-bleeding { color: #ff6b6b; background: rgba(255, 107, 107, 0.2); }
+  .status-shielded { color: #87ceeb; background: rgba(135, 206, 235, 0.2); }
+  
+  .event-card{
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 10px 0;
+  }
+  
+  .legacy-upgrades {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  
+  .legacy-upgrade {
+    background: rgba(138, 79, 190, 0.1);
+    border: 1px solid rgba(138, 79, 190, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
 
 </style>
 </head>
@@ -188,7 +214,7 @@
   </div>
   
   <div class="title-section">
-    <h1 class="game-title">Intro to Moonbound</h1>
+    <h1 class="game-title">Moonbound</h1>
     <div class="game-subtitle">Echoes of the Ashen Crown</div>
   </div>
   
@@ -205,12 +231,13 @@
     <div class="panel">
       <h1>🕯️ The Chronicler's Scriptorium</h1>
       <div class="lore">
-        The world is caught in a loop, endlessly dying and rebirthing under the curse of the Ashen Crown. You are the Chronicler, a being outside this cycle, tasked with recording its history. But perhaps you can do more. Perhaps you can guide the heroes of this age to finally shatter the crown and break the cycle.
+        The world is caught in a loop, endlessly dying and rebirthing under the curse of the Ashen Crown. You are the Chronicler, a being outside this cycle, tasked with recording its history and guiding heroes to break the curse.
       </div>
       
       <div class="small">
         <strong>Cycle Number:</strong> <span id="loops">1</span><br>
-        <strong>Legacy Power:</strong> <span id="crownFragments">0</span> Crown Fragments
+        <strong>Legacy Power:</strong> <span id="crownFragments">0</span> Crown Fragments<br>
+        <strong>Chronicle Progress:</strong> <span id="chronicleProgress">0%</span>
       </div>
       
       <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
@@ -219,6 +246,7 @@
         <div class="stat"><div>✒️ Temporal Essence</div><div id="essence">0</div></div>
         <div class="stat"><div>📜 Lore Scraps</div><div id="loreScraps">0</div></div>
         <div class="stat"><div>⚔️ Champions Guided</div><div id="champions">0</div></div>
+        <div class="stat"><div>🏆 Victories</div><div id="victories">0</div></div>
       </div>
       
       <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
@@ -232,6 +260,12 @@
       <div style="margin-top:12px">
         <h2>Scriptorium Upgrades</h2>
         <div class="upgrades" id="upgrades"></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <h2 class="legacy-title">👑 Legacy Upgrades</h2>
+        <div class="small">Permanent improvements powered by Crown Fragments</div>
+        <div class="legacy-upgrades" id="legacyUpgrades"></div>
       </div>
 
       <div style="margin-top:12px" class="controls">
@@ -258,14 +292,14 @@
       </div>
       
       <div class="chronicle" id="currentChronicle">
-        <strong>Cycle Log:</strong> The ink is still wet on the first page...
+        <strong>Current Chronicle:</strong> <span id="chronicleText">The ink is still wet on the first page...</span>
       </div>
       
       <div class="dungeon-map" id="dungeonMap"></div>
 
-      <div class="dialogue" id="sceneBox" style="display:none">
-        <div id="sceneText"></div>
-        <div class="choices" id="sceneChoices"></div>
+      <div id="eventDialog" style="display:none" class="event-card">
+        <div id="eventText"></div>
+        <div class="choices" id="eventChoices"></div>
       </div>
 
       <hr style="margin:12px 0;border:none;height:1px;background:rgba(255,255,255,0.1)">
@@ -316,25 +350,31 @@ function getNewGameState() {
         loreScraps: 0,
         loops: 1,
         crownFragments: 0,
+        victories: 0,
         essencePerClick: 1,
         essencePerSec: 0,
         recruitCost: 10,
         upgrades: [
             {id: 'quill', name: 'Flowing Quill', cost: 50, desc: 'Your writing becomes swifter. +1 Essence per second.', bought: false, apply: () => state.essencePerSec += 1},
-            {id: 'library', name: 'Expand Library', cost: 200, desc: 'Better research. Start each cycle with a free champion.', bought: false, apply: () => {}},
-            {id: 'scrying', name: 'Scrying Pool', cost: 500, desc: 'Glimpse the future. Reveal one treasure node on each map.', bought: false, apply: () => {}},
+            {id: 'library', name: 'Expand Library', cost: 200, desc: 'Better research. Champions start with +10 Max HP.', bought: false, apply: () => {}},
+            {id: 'scrying', name: 'Scrying Pool', cost: 500, desc: 'Glimpse the future. See enemy HP in combat.', bought: false, apply: () => {}},
             {id: 'binding', name: 'Tome Binding', cost: 1200, desc: 'Preserve knowledge. Gain +1 Lore Scrap per victory.', bought: false, apply: () => {}},
+            {id: 'mastery', name: 'Chronicle Mastery', cost: 3000, desc: 'Deep understanding. +2 Essence per click and +2 per second.', bought: false, apply: () => { state.essencePerClick += 2; state.essencePerSec += 2; }},
+            {id: 'wisdom', name: 'Ancient Wisdom', cost: 8000, desc: 'Champions gain experience 50% faster and unlock advanced skills.', bought: false, apply: () => {}},
         ],
+        legacyUpgrades: {
+            damage: { level: 0, cost: 1, name: 'Heroic Might', desc: 'Champions deal +20% damage per level.' },
+            health: { level: 0, cost: 1, name: 'Vital Force', desc: 'Champions have +15 Max HP per level.' },
+            essence: { level: 0, cost: 2, name: 'Temporal Mastery', desc: 'Gain +1 Essence per second per level.' },
+            lore: { level: 0, cost: 3, name: 'Chronicle Keeper', desc: '+1 Lore Scrap per victory per level.' },
+        },
         roster: [],
         inventory: [],
-        dungeon: { map: [], currentNode: null },
+        dungeon: { map: [], currentNode: null, floor: 1 },
         activeEncounter: null,
         loreUnlocked: [],
-        legacyUpgrades: {
-            essence: 0,
-            championDamage: 0,
-            startingItems: 0,
-        }
+        activeEvent: null,
+        championExperience: 0,
     };
 }
 
@@ -344,43 +384,228 @@ const championArchetypes = [
         id: 'knight', name: 'The Steadfast Knight',
         lore: 'A forgotten knight, bound by an oath to protect a kingdom that has turned to dust.',
         hp: 100, maxHp: 100, resolve: 50, maxResolve: 50,
+        experience: 0, level: 1,
         skills: [
-            { name: 'Shield Bash', cost: 20, desc: 'Deal 15 damage and Stun the enemy for 1 turn.', effect(enemy) { enemy.hp -= 15; applyStatus(enemy, 'stunned', 2); }},
-            { name: 'Valiant Strike', cost: 10, desc: 'A basic but reliable attack for 10 damage.', effect(enemy) { enemy.hp -= 10; }},
-            { name: 'Hold the Line', cost: 0, desc: 'Recover 15 Resolve, but do nothing else this turn.', effect(enemy, user) { user.resolve += 15; }}
+            { name: 'Shield Bash', cost: 20, desc: 'Deal 15 damage and Stun the enemy for 2 turns.', effect(enemy, user) { 
+                let damage = 15 + (user.level - 1) * 3;
+                enemy.hp -= damage; 
+                applyStatus(enemy, 'stunned', 2); 
+                log(`${user.name} deals ${damage} damage and stuns the enemy!`);
+            }},
+            { name: 'Valiant Strike', cost: 10, desc: 'A reliable attack that grows stronger with experience.', effect(enemy, user) { 
+                let damage = 10 + (user.level - 1) * 2;
+                enemy.hp -= damage;
+                log(`${user.name} deals ${damage} damage!`);
+            }},
+            { name: 'Hold the Line', cost: 0, desc: 'Recover Resolve and gain Shield for 3 turns.', effect(enemy, user) { 
+                user.resolve += 15; 
+                applyStatus(user, 'shielded', 3);
+                log(`${user.name} recovers resolve and raises their shield!`);
+            }}
         ],
-        bond: 0, maxBond: 10, traits: []
+        bond: 0, maxBond: 100, traits: ['Stalwart', 'Protective']
     },
     {
         id: 'ranger', name: 'The Wary Ranger',
         lore: 'A hunter who stalks the cursed woods, knowing the name of every beast and every ghost.',
         hp: 80, maxHp: 80, resolve: 60, maxResolve: 60,
+        experience: 0, level: 1,
         skills: [
-            { name: 'Venom Arrow', cost: 15, desc: 'Deal 5 damage and apply Poison for 3 turns.', effect(enemy) { enemy.hp -= 5; applyStatus(enemy, 'poison', 4); }},
-            { name: 'Aimed Shot', cost: 25, desc: 'A carefully aimed shot for 25 damage.', effect(enemy) { enemy.hp -= 25; }},
-            { name: 'Recuperate', cost: 0, desc: 'Forage for herbs, recovering 15 HP.', effect(enemy, user) { user.hp = Math.min(user.maxHp, user.hp + 15); }}
+            { name: 'Venom Arrow', cost: 15, desc: 'Deal damage and apply Poison for 4 turns.', effect(enemy, user) { 
+                let damage = 5 + Math.floor((user.level - 1) * 1.5);
+                enemy.hp -= damage; 
+                applyStatus(enemy, 'poison', 4); 
+                log(`${user.name} shoots a poisoned arrow for ${damage} damage!`);
+            }},
+            { name: 'Aimed Shot', cost: 25, desc: 'A carefully aimed shot that increases in power.', effect(enemy, user) { 
+                let damage = 25 + (user.level - 1) * 4;
+                enemy.hp -= damage;
+                log(`${user.name} lands a precise shot for ${damage} damage!`);
+            }},
+            { name: 'Recuperate', cost: 0, desc: 'Forage for herbs, recovering HP and curing status effects.', effect(enemy, user) { 
+                let healing = 15 + (user.level - 1) * 3;
+                user.hp = Math.min(user.maxHp, user.hp + healing); 
+                user.statusEffects = user.statusEffects?.filter(s => s.type === 'shielded') || [];
+                log(`${user.name} recovers ${healing} HP and clears debuffs!`);
+            }}
         ],
-        bond: 0, maxBond: 10, traits: []
+        bond: 0, maxBond: 100, traits: ['Swift', 'Keen-Eyed']
     },
+    {
+        id: 'mage', name: 'The Exiled Scholar',
+        lore: 'Once a court wizard, now a wanderer seeking redemption through forbidden knowledge.',
+        hp: 60, maxHp: 60, resolve: 80, maxResolve: 80,
+        experience: 0, level: 1,
+        skills: [
+            { name: 'Arcane Bolt', cost: 12, desc: 'Launch magical energy that pierces defenses.', effect(enemy, user) { 
+                let damage = 12 + (user.level - 1) * 3;
+                enemy.hp -= damage;
+                log(`${user.name} casts Arcane Bolt for ${damage} damage!`);
+            }},
+            { name: 'Weaken', cost: 18, desc: 'Curse the enemy, reducing their damage for 4 turns.', effect(enemy, user) { 
+                applyStatus(enemy, 'weakened', 4);
+                log(`${user.name} hexes the enemy, weakening their attacks!`);
+            }},
+            { name: 'Meditate', cost: 0, desc: 'Focus magical energy, recovering Resolve.', effect(enemy, user) { 
+                let recovery = 20 + (user.level - 1) * 3;
+                user.resolve = Math.min(user.maxResolve, user.resolve + recovery);
+                log(`${user.name} meditates and recovers ${recovery} Resolve!`);
+            }}
+        ],
+        bond: 0, maxBond: 100, traits: ['Scholarly', 'Mystic']
+    }
 ];
 
 const enemies = {
-    'husk': { name: 'Ashen Husk', hp: 50, atk: 8, skills: [{ type: 'attack' }] },
-    'wight': { name: 'Sorrow Wight', hp: 40, atk: 6, skills: [{ type: 'attack' }, { type: 'special', effect(target) { target.resolve -= 10; log(`${this.name} drains ${target.name}'s will!`, 'danger'); } }] },
-    'echo': { name: 'Crown\'s Echo', hp: 80, atk: 12, skills: [{ type: 'attack' }, { type: 'attack' }, { type: 'special', effect(target) { applyStatus(target, 'weakened', 2); log(`${this.name} whispers despair, weakening ${target.name}!`, 'danger'); } }] }
+    'husk': { 
+        name: 'Ashen Husk', hp: 50, maxHp: 50, atk: 8, 
+        skills: [
+            { type: 'attack', desc: 'A shambling attack' },
+            { type: 'special', desc: 'Drain life', effect(target) { 
+                let damage = 5;
+                target.hp -= damage; 
+                this.hp = Math.min(this.maxHp, this.hp + Math.floor(damage/2));
+                log(`${this.name} drains ${damage} life from ${target.name}!`, 'danger'); 
+            }}
+        ],
+        statusEffects: []
+    },
+    'wight': { 
+        name: 'Sorrow Wight', hp: 70, maxHp: 70, atk: 12, 
+        skills: [
+            { type: 'attack', desc: 'Spectral claws' },
+            { type: 'special', desc: 'Despair aura', effect(target) { 
+                target.resolve -= 15; 
+                applyStatus(target, 'weakened', 2);
+                log(`${this.name} emanates despair, draining will and strength!`, 'danger'); 
+            }}
+        ],
+        statusEffects: []
+    },
+    'echo': { 
+        name: 'Crown\'s Echo', hp: 120, maxHp: 120, atk: 18, 
+        skills: [
+            { type: 'attack', desc: 'Crushing blow' },
+            { type: 'special', desc: 'Curse of ages', effect(target) { 
+                applyStatus(target, 'bleeding', 3);
+                applyStatus(target, 'weakened', 3);
+                log(`${this.name} inflicts ancient curses!`, 'danger'); 
+            }},
+            { type: 'special', desc: 'Royal command', effect(target) { 
+                let damage = 25;
+                target.hp -= damage;
+                target.resolve -= 20;
+                log(`${this.name} commands obedience, dealing ${damage} damage and draining resolve!`, 'danger'); 
+            }}
+        ],
+        statusEffects: []
+    },
+    'sentinel': {
+        name: 'Stone Sentinel', hp: 90, maxHp: 90, atk: 15,
+        skills: [
+            { type: 'attack', desc: 'Boulder strike' },
+            { type: 'special', desc: 'Fortify', effect(target) {
+                applyStatus(this, 'shielded', 3);
+                log(`${this.name} hardens its defenses!`, 'info');
+            }}
+        ],
+        statusEffects: []
+    }
 };
 
 const items = {
-    'potion': { name: 'Healing Potion', desc: 'Recovers 30 HP.', use(target) { target.hp = Math.min(target.maxHp, target.hp + 30); log(`${target.name} drinks a Healing Potion.`, 'success'); }},
-    'draught': { name: 'Resolve Draught', desc: 'Recovers 25 Resolve.', use(target) { target.resolve = Math.min(target.maxResolve, target.resolve + 25); log(`${target.name} drinks a Resolve Draught.`, 'success'); }}
+    'potion': { 
+        name: 'Healing Potion', desc: 'Recovers 30 HP instantly.', 
+        use(target) { 
+            let healing = 30;
+            target.hp = Math.min(target.maxHp, target.hp + healing); 
+            log(`${target.name} drinks a Healing Potion, recovering ${healing} HP.`, 'success'); 
+        }
+    },
+    'draught': { 
+        name: 'Resolve Draught', desc: 'Recovers 25 Resolve instantly.', 
+        use(target) { 
+            let recovery = 25;
+            target.resolve = Math.min(target.maxResolve, target.resolve + recovery); 
+            log(`${target.name} drinks a Resolve Draught, recovering ${recovery} Resolve.`, 'success'); 
+        }
+    },
+    'elixir': {
+        name: 'Elixir of Fortitude', desc: 'Grants Shield status for 5 turns.',
+        use(target) {
+            applyStatus(target, 'shielded', 5);
+            log(`${target.name} drinks an Elixir of Fortitude, gaining protection!`, 'success');
+        }
+    },
+    'antidote': {
+        name: 'Antidote Vial', desc: 'Removes all negative status effects.',
+        use(target) {
+            let removed = target.statusEffects?.filter(s => ['poison', 'bleeding', 'weakened', 'stunned'].includes(s.type)) || [];
+            target.statusEffects = target.statusEffects?.filter(s => !['poison', 'bleeding', 'weakened', 'stunned'].includes(s.type)) || [];
+            log(`${target.name} uses an Antidote Vial, clearing ${removed.length} debuffs!`, 'success');
+        }
+    },
+    'bomb': {
+        name: 'Alchemical Bomb', desc: 'Deals 40 damage to the enemy.',
+        use(target, enemy) {
+            if (enemy) {
+                let damage = 40;
+                enemy.hp -= damage;
+                log(`${target.name} throws an Alchemical Bomb, dealing ${damage} damage!`, 'success');
+            }
+        }
+    }
 };
+
+const randomEvents = [
+    {
+        id: 'merchant',
+        title: 'Wandering Merchant',
+        text: 'A hooded figure approaches with a cart full of mysterious wares. Their goods shimmer with otherworldly energy.',
+        choices: [
+            { text: 'Trade 30 Essence for a random item', cost: { essence: 30 }, reward: { item: 'random' } },
+            { text: 'Trade 50 Essence for a healing item', cost: { essence: 50 }, reward: { item: 'potion' } },
+            { text: 'Politely decline', reward: { essence: 5 } }
+        ]
+    },
+    {
+        id: 'shrine',
+        title: 'Ancient Shrine',
+        text: 'You discover a crumbling shrine dedicated to forgotten gods. Ancient runes pulse with fading power.',
+        choices: [
+            { text: 'Offer 20 Essence in prayer', cost: { essence: 20 }, reward: { championHeal: 0.3, lore: 1 } },
+            { text: 'Study the runes carefully', reward: { lore: 2, essence: 10 } },
+            { text: 'Leave it undisturbed', reward: {} }
+        ]
+    },
+    {
+        id: 'memory',
+        title: 'Echoing Memory',
+        text: 'The air shimmers, and you witness a ghostly reenactment of past events. The memory speaks of hidden knowledge.',
+        choices: [
+            { text: 'Focus on the memory intently', cost: { resolve: 15 }, reward: { lore: 3, essence: 20 } },
+            { text: 'Let the memory pass naturally', reward: { lore: 1 } }
+        ]
+    },
+    {
+        id: 'training',
+        title: 'Sparring Grounds',
+        text: 'Your champion finds ancient training dummies that seem to move on their own, offering a chance to hone their skills.',
+        choices: [
+            { text: 'Train intensively', cost: { resolve: 20 }, reward: { experience: 25 } },
+            { text: 'Practice basic forms', reward: { experience: 10, resolve: 5 } },
+            { text: 'Rest instead', reward: { championHeal: 0.2 } }
+        ]
+    }
+];
 
 // --- DOM ELEMENTS ---
 const elements = {};
 document.addEventListener('DOMContentLoaded', () => {
-    const ids = ['mainMenu', 'gameContainer', 'essence', 'loreScraps', 'champions', 'loops', 'crownFragments',
-                 'upgrades', 'roster', 'inventory', 'dungeonMap', 'battleUI', 'encounterInfo', 'enemyCard',
-                 'enemyName', 'battleActions', 'eventLog', 'currentChronicle', 'loreEntries', 'loadBtn'];
+    const ids = ['mainMenu', 'gameContainer', 'essence', 'loreScraps', 'champions', 'loops', 'crownFragments', 'victories',
+                 'upgrades', 'legacyUpgrades', 'roster', 'inventory', 'dungeonMap', 'battleUI', 'encounterInfo', 'enemyCard',
+                 'enemyName', 'battleActions', 'eventLog', 'currentChronicle', 'chronicleText', 'chronicleProgress', 
+                 'loreEntries', 'loadBtn', 'eventDialog', 'eventText', 'eventChoices'];
     ids.forEach(id => elements[id] = document.getElementById(id));
     
     // Event Listeners
@@ -392,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('menuBtn').addEventListener('click', showMainMenu);
     document.getElementById('prestige').addEventListener('click', prestige);
 
-    if (!localStorage.getItem('moonbound_intro_save')) {
+    if (!localStorage.getItem('moonbound_save')) {
         elements.loadBtn.disabled = true;
     }
 
@@ -402,32 +627,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start the main loop *after* the DOM is ready.
     setInterval(() => {
-        if (state && state.essencePerSec > 0 && elements.gameContainer.style.display === 'block') {
-            state.essence += state.essencePerSec;
+        if (state && elements.gameContainer.style.display === 'block') {
+            if (state.essencePerSec > 0) {
+                state.essence += state.essencePerSec;
+            }
+            // Random events
+            if (state.roster.length > 0 && !state.activeEncounter && !state.activeEvent && Math.random() < 0.002) {
+                triggerRandomEvent();
+            }
             updateAllUI();
         }
     }, 1000);
 });
 
-
 // --- UI UPDATE FUNCTIONS ---
 function updateAllUI() {
-    if (!state || !elements.essence) return; // Guard against running before DOM is ready
+    if (!state || !elements.essence) return;
+    
     elements.essence.textContent = Math.floor(state.essence).toLocaleString();
     elements.loreScraps.textContent = state.loreScraps.toLocaleString();
     elements.champions.textContent = state.roster.length > 0 ? '1/1' : '0/1';
     elements.loops.textContent = state.loops.toLocaleString();
     elements.crownFragments.textContent = state.crownFragments.toLocaleString();
+    elements.victories.textContent = state.victories.toLocaleString();
+    
+    // Calculate progress
+    let progress = 0;
+    if (state.dungeon.map.length > 0) {
+        const completed = state.dungeon.map.filter(n => n.completed).length;
+        progress = Math.floor((completed / state.dungeon.map.length) * 100);
+    }
+    elements.chronicleProgress.textContent = progress + '%';
     
     updateUpgradesUI();
+    updateLegacyUpgradesUI();
     updateRosterUI();
     updateInventoryUI();
     updateDungeonMapUI();
     updateBattleUI();
     updateLoreUI();
+    updateChronicleUI();
 
     document.getElementById('recruit').disabled = state.roster.length > 0 || state.essence < state.recruitCost;
     document.getElementById('recruit').textContent = `🤝 Find a Champion (${state.recruitCost}✒️)`;
+    
+    document.getElementById('prestige').disabled = !canPrestige();
 }
 
 function updateRosterUI() {
@@ -436,8 +680,12 @@ function updateRosterUI() {
         elements.roster.innerHTML = `<div class="card small-muted">No champion has been found for this cycle.</div>`;
         return;
     }
+    
     const char = state.roster[0];
     const hpClass = char.hp <= 0 ? 'dead' : char.hp < char.maxHp * 0.5 ? 'injured' : 'healthy';
+    const expToNext = char.level * 100;
+    const expProgress = Math.floor((char.experience % 100) / 100 * 100);
+    
     let skillsHTML = '';
     char.skills.forEach(skill => {
         skillsHTML += `<div class="tooltip small">
@@ -446,12 +694,28 @@ function updateRosterUI() {
         </div>`;
     });
 
+    let statusHTML = '';
+    if (char.statusEffects && char.statusEffects.length > 0) {
+        char.statusEffects.forEach(s => {
+            statusHTML += `<span class="status-effect status-${s.type}">${s.type.toUpperCase()} (${s.duration})</span> `;
+        });
+    }
+
+    let traitsHTML = '';
+    char.traits.forEach(trait => {
+        traitsHTML += `<span class="trait-tag">${trait}</span>`;
+    });
+
     elements.roster.innerHTML = `
         <div class="card">
-            <strong>${char.name}</strong>
+            <strong>${char.name} (Level ${char.level})</strong>
             <div class="small-muted">${char.lore}</div>
             <div class="stat"><div>HP</div><div class="hp ${hpClass}">${char.hp}/${char.maxHp}</div></div>
             <div class="stat"><div>Resolve</div><div>${char.resolve}/${char.maxResolve}</div></div>
+            <div class="stat"><div>Experience</div><div>${char.experience} (${expProgress}%)</div></div>
+            <div class="stat"><div>Bond</div><div>${char.bond}/${char.maxBond}</div></div>
+            ${statusHTML ? `<div class="small" style="margin: 5px 0;">${statusHTML}</div>` : ''}
+            <div style="margin: 5px 0;">${traitsHTML}</div>
             <h2>Skills</h2>
             ${skillsHTML}
         </div>`;
@@ -478,13 +742,17 @@ function updateInventoryUI() {
 
 function updateDungeonMapUI() {
     elements.dungeonMap.innerHTML = '';
-     if (state.roster.length === 0) {
+    if (state.roster.length === 0) {
         elements.dungeonMap.innerHTML = `<div class="small-muted" style="text-align:center;">Find a champion to explore the cursed lands.</div>`;
         return;
     }
+    
     state.dungeon.map.forEach(node => {
         const nodeEl = document.createElement('div');
         nodeEl.className = `node ${node.locked ? 'locked' : ''} ${node.completed ? 'completed' : ''}`;
+        if (state.dungeon.currentNode === node.id) {
+            nodeEl.className += ' current';
+        }
         nodeEl.innerHTML = `${node.icon} ${node.name}`;
         if (!node.locked && !node.completed) {
             nodeEl.onclick = () => selectNode(node.id);
@@ -499,6 +767,7 @@ function updateBattleUI() {
         elements.encounterInfo.textContent = 'The path ahead is quiet... for now.';
         return;
     }
+    
     elements.battleUI.style.display = 'block';
     const enemy = state.activeEncounter.enemy;
     elements.encounterInfo.textContent = 'You are in combat!';
@@ -511,7 +780,10 @@ function updateBattleUI() {
         });
     }
 
-    elements.enemyCard.innerHTML = `HP: ${enemy.hp}/${enemy.maxHp} | ATK: ${enemy.atk} <br> ${statusHTML}`;
+    const showHP = state.upgrades.find(u => u.id === 'scrying' && u.bought);
+    const hpDisplay = showHP ? `HP: ${enemy.hp}/${enemy.maxHp} | ` : '';
+    
+    elements.enemyCard.innerHTML = `${hpDisplay}ATK: ${enemy.atk} <br> ${statusHTML}`;
     
     elements.battleActions.innerHTML = '';
     const champion = state.roster[0];
@@ -525,34 +797,95 @@ function updateBattleUI() {
 }
 
 function updateUpgradesUI() {
-  elements.upgrades.innerHTML = '';
-  state.upgrades.forEach(u => {
-    const upEl = document.createElement('div');
-    upEl.className = 'upgrade';
-    upEl.innerHTML = `
-      <div>
-        <strong>${u.name}</strong>
-        <div class="small">${u.desc}</div>
-      </div>
-      <button ${state.essence < u.cost || u.bought ? 'disabled' : ''}>
-        ${u.bought ? 'Purchased' : `✒️ ${u.cost.toLocaleString()}`}
-      </button>
-    `;
-    if (!u.bought) {
-      upEl.querySelector('button').onclick = () => buyUpgrade(u.id);
-    }
-    elements.upgrades.appendChild(upEl);
-  });
+    elements.upgrades.innerHTML = '';
+    state.upgrades.forEach(u => {
+        const upEl = document.createElement('div');
+        upEl.className = 'upgrade';
+        upEl.innerHTML = `
+            <div>
+                <strong>${u.name}</strong>
+                <div class="small">${u.desc}</div>
+            </div>
+            <button ${state.essence < u.cost || u.bought ? 'disabled' : ''}>
+                ${u.bought ? '✓ Purchased' : `✒️ ${u.cost.toLocaleString()}`}
+            </button>
+        `;
+        if (!u.bought) {
+            upEl.querySelector('button').onclick = () => buyUpgrade(u.id);
+        }
+        elements.upgrades.appendChild(upEl);
+    });
+}
+
+function updateLegacyUpgradesUI() {
+    elements.legacyUpgrades.innerHTML = '';
+    Object.entries(state.legacyUpgrades).forEach(([key, upgrade]) => {
+        const upEl = document.createElement('div');
+        upEl.className = 'legacy-upgrade tooltip';
+        const cost = upgrade.cost + upgrade.level;
+        upEl.innerHTML = `
+            <strong>${upgrade.name}</strong><br>
+            <div class="small">Level ${upgrade.level}</div>
+            <button ${state.crownFragments < cost ? 'disabled' : ''} style="margin-top:5px;">
+                👑 ${cost}
+            </button>
+            <span class="tooltiptext">${upgrade.desc}</span>
+        `;
+        if (state.crownFragments >= cost) {
+            upEl.querySelector('button').onclick = () => buyLegacyUpgrade(key);
+        }
+        elements.legacyUpgrades.appendChild(upEl);
+    });
 }
 
 function updateLoreUI() {
-    // Implement this function if you want to display discovered lore
+    if (state.loreUnlocked.length === 0) {
+        elements.loreEntries.innerHTML = 'Discover lore scraps to piece together the world\'s history...';
+        return;
+    }
+    
+    elements.loreEntries.innerHTML = '';
+    state.loreUnlocked.forEach((lore, index) => {
+        const loreEl = document.createElement('div');
+        loreEl.className = 'small';
+        loreEl.style.marginBottom = '8px';
+        loreEl.style.fontStyle = 'italic';
+        loreEl.innerHTML = `<strong>Fragment ${index + 1}:</strong> ${lore}`;
+        elements.loreEntries.appendChild(loreEl);
+    });
 }
 
+function updateChronicleUI() {
+    let chronicleText = "The ink is still wet on the first page...";
+    
+    if (state.roster.length > 0) {
+        const champion = state.roster[0];
+        const completed = state.dungeon.map.filter(n => n.completed).length;
+        const total = state.dungeon.map.length;
+        
+        if (completed === 0) {
+            chronicleText = `${champion.name} begins their journey into the cursed lands...`;
+        } else if (completed < total - 1) {
+            chronicleText = `${champion.name} has overcome ${completed} of ${total} trials...`;
+        } else if (completed === total) {
+            chronicleText = `${champion.name} stands before the Crown's final guardian...`;
+        }
+    }
+    
+    elements.chronicleText.textContent = chronicleText;
+}
 
 // --- CORE GAME LOGIC ---
 function gather() {
-    state.essence += state.essencePerClick;
+    const baseGain = state.essencePerClick + (state.crownFragments * 0.5);
+    state.essence += baseGain;
+    
+    // Small chance of finding lore while chronicling
+    if (Math.random() < 0.05) {
+        state.loreScraps += 1;
+        log('You discover a fragment of ancient lore while chronicling!', 'success');
+    }
+    
     updateAllUI();
 }
 
@@ -560,45 +893,114 @@ function recruit() {
     if (state.essence >= state.recruitCost && state.roster.length === 0) {
         state.essence -= state.recruitCost;
         const archetype = JSON.parse(JSON.stringify(championArchetypes[Math.floor(Math.random() * championArchetypes.length)]));
+        
+        // Apply legacy upgrades
+        const healthBonus = state.legacyUpgrades.health.level * 15;
+        const libraryBonus = state.upgrades.find(u => u.id === 'library' && u.bought) ? 10 : 0;
+        
+        archetype.maxHp += healthBonus + libraryBonus;
+        archetype.hp = archetype.maxHp;
+        archetype.statusEffects = [];
+        
         state.roster.push(archetype);
-        log(`You have found ${archetype.name}, a lost soul willing to fight.`);
+        log(`You have found ${archetype.name}, a lost soul willing to fight.`, 'success');
+        
         generateDungeon();
         updateAllUI();
     }
 }
 
 function buyUpgrade(id) {
-  const up = state.upgrades.find(u => u.id === id);
-  if (up && !up.bought && state.essence >= up.cost) {
-    state.essence -= up.cost;
-    up.bought = true;
-    up.apply();
-    log(`Upgraded Scriptorium: ${up.name}!`, 'success');
-    updateAllUI();
-  }
+    const up = state.upgrades.find(u => u.id === id);
+    if (up && !up.bought && state.essence >= up.cost) {
+        state.essence -= up.cost;
+        up.bought = true;
+        up.apply();
+        log(`Upgraded Scriptorium: ${up.name}!`, 'success');
+        updateAllUI();
+    }
+}
+
+function buyLegacyUpgrade(key) {
+    const upgrade = state.legacyUpgrades[key];
+    const cost = upgrade.cost + upgrade.level;
+    
+    if (state.crownFragments >= cost) {
+        state.crownFragments -= cost;
+        upgrade.level++;
+        
+        // Apply immediate effects
+        switch(key) {
+            case 'essence':
+                state.essencePerSec += 1;
+                break;
+        }
+        
+        log(`Legacy Enhanced: ${upgrade.name} Level ${upgrade.level}!`, 'purple');
+        updateAllUI();
+    }
 }
 
 // --- DUNGEON & ENCOUNTER LOGIC ---
 function generateDungeon() {
-    state.dungeon = { map: [], currentNodeId: 0 };
-    const nodeTypes = [
-        { name: 'Combat', icon: '⚔️', type: 'combat' },
-        { name: 'Combat', icon: '⚔️', type: 'combat' },
-        { name: 'Rest Site', icon: '🔥', type: 'rest' },
-        { name: 'Treasure', icon: '💎', type: 'treasure' },
-        { name: 'Elite Combat', icon: '💀', type: 'elite' }
+    state.dungeon = { map: [], currentNodeId: null, floor: Math.floor((state.loops - 1) / 3) + 1 };
+    
+    const nodeTemplates = [
+        { name: 'Cursed Grove', icon: '🌲', type: 'combat' },
+        { name: 'Abandoned Outpost', icon: '🏚️', type: 'combat' },
+        { name: 'Spectral Battleground', icon: '⚔️', type: 'combat' },
+        { name: 'Ancient Campfire', icon: '🔥', type: 'rest' },
+        { name: 'Hidden Cache', icon: '💎', type: 'treasure' },
+        { name: 'Meditation Circle', icon: '🧘', type: 'rest' },
+        { name: 'Ruined Shrine', icon: '🏛️', type: 'event' },
+        { name: 'Crystal Cave', icon: '💠', type: 'treasure' },
+        { name: 'Shadow Portal', icon: '🌀', type: 'elite' },
+        { name: 'Bone Garden', icon: '💀', type: 'elite' }
     ];
-    for (let i = 0; i < 5; i++) {
-        const template = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+    
+    // Generate 8-10 nodes
+    const nodeCount = 8 + Math.floor(Math.random() * 3);
+    const selectedTemplates = [];
+    
+    // Ensure at least one of each important type
+    selectedTemplates.push(
+        nodeTemplates.find(t => t.type === 'rest'),
+        nodeTemplates.find(t => t.type === 'treasure'),
+        nodeTemplates.find(t => t.type === 'elite')
+    );
+    
+    // Fill rest randomly
+    while (selectedTemplates.length < nodeCount - 1) {
+        const template = nodeTemplates[Math.floor(Math.random() * nodeTemplates.length)];
+        selectedTemplates.push(JSON.parse(JSON.stringify(template)));
+    }
+    
+    // Shuffle
+    for (let i = selectedTemplates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [selectedTemplates[i], selectedTemplates[j]] = [selectedTemplates[j], selectedTemplates[i]];
+    }
+    
+    // Create nodes
+    selectedTemplates.forEach((template, i) => {
         state.dungeon.map.push({
             id: i,
             ...template,
             locked: i > 0,
             completed: false
         });
-    }
-    // Final boss
-    state.dungeon.map.push({ id: 5, name: 'Crown\'s Lair', icon: '👑', type: 'boss', locked: true, completed: false });
+    });
+    
+    // Add final boss
+    state.dungeon.map.push({ 
+        id: selectedTemplates.length, 
+        name: 'Crown\'s Sanctum', 
+        icon: '👑', 
+        type: 'boss', 
+        locked: true, 
+        completed: false 
+    });
+    
     updateDungeonMapUI();
 }
 
@@ -606,88 +1008,160 @@ function selectNode(id) {
     const node = state.dungeon.map.find(n => n.id === id);
     if (node.completed || node.locked) return;
 
-    // This logic is moved to checkBattleEnd for combat nodes
-    // node.completed = true; 
-    
-    // Unlock next node
-    if (id + 1 < state.dungeon.map.length) {
-        state.dungeon.map[id + 1].locked = false;
-    }
-    
-    log(`You proceed to the ${node.name}.`);
+    state.dungeon.currentNode = id;
+    log(`You approach the ${node.name}.`);
 
     switch (node.type) {
         case 'combat':
-            startEncounter(enemies.husk, id);
+            const enemyType = Math.random() < 0.7 ? 'husk' : Math.random() < 0.8 ? 'wight' : 'sentinel';
+            startEncounter(enemies[enemyType], id);
             break;
         case 'elite':
-            startEncounter(enemies.wight, id);
+            const eliteType = Math.random() < 0.6 ? 'wight' : 'sentinel';
+            startEncounter(enemies[eliteType], id);
             break;
         case 'boss':
             startEncounter(enemies.echo, id);
             break;
         case 'rest':
-            node.completed = true;
-            const champion = state.roster[0];
-            const hpHealed = Math.floor(champion.maxHp * 0.5);
-            const resolveHealed = Math.floor(champion.maxResolve * 0.5);
-            champion.hp = Math.min(champion.maxHp, champion.hp + hpHealed);
-            champion.resolve = Math.min(champion.maxResolve, champion.resolve + resolveHealed);
-            log(`You rest at a campfire, recovering ${hpHealed} HP and ${resolveHealed} Resolve.`, 'success');
+            handleRestSite(node);
             break;
         case 'treasure':
-            node.completed = true;
-            const itemKeys = Object.keys(items);
-            const foundItemId = itemKeys[Math.floor(Math.random() * itemKeys.length)];
-            addItem(foundItemId, 1);
-            log(`You found a ${items[foundItemId].name}!`, 'success');
+            handleTreasure(node);
+            break;
+        case 'event':
+            triggerRandomEvent();
             break;
     }
     updateAllUI();
 }
 
+function handleRestSite(node) {
+    node.completed = true;
+    unlockNextNode(node.id);
+    
+    const champion = state.roster[0];
+    const hpHealed = Math.floor(champion.maxHp * 0.6);
+    const resolveHealed = Math.floor(champion.maxResolve * 0.8);
+    
+    champion.hp = Math.min(champion.maxHp, champion.hp + hpHealed);
+    champion.resolve = Math.min(champion.maxResolve, champion.resolve + resolveHealed);
+    
+    // Clear negative status effects
+    if (champion.statusEffects) {
+        champion.statusEffects = champion.statusEffects.filter(s => s.type === 'shielded');
+    }
+    
+    log(`You rest peacefully, recovering ${hpHealed} HP and ${resolveHealed} Resolve.`, 'success');
+}
+
+function handleTreasure(node) {
+    node.completed = true;
+    unlockNextNode(node.id);
+    
+    const itemPool = ['potion', 'draught', 'elixir', 'antidote', 'bomb'];
+    const foundItemId = itemPool[Math.floor(Math.random() * itemPool.length)];
+    const quantity = Math.random() < 0.3 ? 2 : 1;
+    
+    addItem(foundItemId, quantity);
+    log(`You found ${quantity}x ${items[foundItemId].name}!`, 'success');
+    
+    // Bonus essence
+    const bonusEssence = 15 + Math.floor(Math.random() * 20);
+    state.essence += bonusEssence;
+    log(`You also gain ${bonusEssence} Temporal Essence from the site's residual magic.`);
+}
+
+function unlockNextNode(currentId) {
+    if (currentId + 1 < state.dungeon.map.length) {
+        state.dungeon.map[currentId + 1].locked = false;
+    }
+}
+
 function startEncounter(enemyTemplate, nodeId) {
+    const enemy = JSON.parse(JSON.stringify(enemyTemplate));
+    
+    // Scale enemy with floor
+    const floorMultiplier = 1 + (state.dungeon.floor - 1) * 0.3;
+    enemy.hp = Math.floor(enemy.hp * floorMultiplier);
+    enemy.maxHp = enemy.hp;
+    enemy.atk = Math.floor(enemy.atk * floorMultiplier);
+    
     state.activeEncounter = {
         nodeId: nodeId,
-        enemy: JSON.parse(JSON.stringify(enemyTemplate)), // Deep copy
+        enemy: enemy,
     };
-    state.activeEncounter.enemy.maxHp = state.activeEncounter.enemy.hp; // Set maxHp
-    state.activeEncounter.enemy.statusEffects = [];
-    log(`A wild ${enemyTemplate.name} appears!`, 'danger');
+    
+    log(`A ${enemy.name} emerges from the shadows!`, 'danger');
     updateAllUI();
 }
 
 function playerTurn(skill) {
     const champion = state.roster[0];
     const enemy = state.activeEncounter.enemy;
-    if (champion.resolve < skill.cost) return;
+    
+    if (champion.resolve < skill.cost || champion.hp <= 0) return;
     
     champion.resolve -= skill.cost;
     log(`${champion.name} uses ${skill.name}!`);
+    
+    // Apply damage multiplier from legacy upgrades
+    const oldEffect = skill.effect;
+    skill.effect = function(enemy, user) {
+        oldEffect.call(this, enemy, user);
+        // Apply damage bonus if this was an attack
+        if (skill.name.includes('Strike') || skill.name.includes('Shot') || skill.name.includes('Bash') || skill.name.includes('Bolt')) {
+            const damageBonus = Math.floor(state.legacyUpgrades.damage.level * 0.2 * (15 + (user.level - 1) * 3));
+            if (damageBonus > 0) {
+                enemy.hp -= damageBonus;
+                log(`Legacy power adds ${damageBonus} damage!`);
+            }
+        }
+    };
+    
     skill.effect(enemy, champion);
-
-    checkBattleEnd() || setTimeout(enemyTurn, 500);
+    
+    // Process champion status effects
+    processStatusEffects(champion);
+    
+    if (!checkBattleEnd()) {
+        setTimeout(enemyTurn, 800);
+    }
     updateAllUI();
 }
 
 function enemyTurn() {
     if (!state.activeEncounter) return;
+    
     const champion = state.roster[0];
     const enemy = state.activeEncounter.enemy;
     
-    if (processStatusEffects(enemy)) { // if stunned
+    if (processStatusEffects(enemy)) {
         checkBattleEnd();
         updateAllUI();
         return;
     }
 
     const move = enemy.skills[Math.floor(Math.random() * enemy.skills.length)];
+    
     if (move.type === 'attack') {
-        const damage = enemy.atk;
+        let damage = enemy.atk;
+        
+        // Check if enemy is weakened
+        if (enemy.statusEffects?.some(s => s.type === 'weakened')) {
+            damage = Math.floor(damage * 0.7);
+        }
+        
+        // Check if champion is shielded
+        if (champion.statusEffects?.some(s => s.type === 'shielded')) {
+            damage = Math.floor(damage * 0.5);
+            log(`${champion.name}'s shield absorbs half the damage!`);
+        }
+        
         champion.hp -= damage;
-        log(`${enemy.name} attacks ${champion.name} for ${damage} damage.`, 'danger');
+        log(`${enemy.name} attacks for ${damage} damage.`, 'danger');
     } else if (move.type === 'special') {
-        move.effect(champion);
+        move.effect.call(enemy, champion);
     }
 
     checkBattleEnd();
@@ -696,191 +1170,49 @@ function enemyTurn() {
 
 function checkBattleEnd() {
     if (!state.activeEncounter) return false;
+    
     const champion = state.roster[0];
     const enemy = state.activeEncounter.enemy;
+    const nodeId = state.activeEncounter.nodeId;
 
     if (enemy.hp <= 0) {
         log(`You have defeated the ${enemy.name}!`, 'success');
         
-        const completedNode = state.dungeon.map.find(n => n.id === state.activeEncounter.nodeId);
+        // Mark node as completed and unlock next
+        const completedNode = state.dungeon.map.find(n => n.id === nodeId);
         if (completedNode) {
             completedNode.completed = true;
+            unlockNextNode(nodeId);
+            
             if (completedNode.type === 'boss') {
-                log('The curse weakens! You can now Shatter the Crown.', 'purple');
-                document.getElementById('prestige').disabled = false;
+                log('The Crown\'s power weakens! You can now attempt to Shatter it.', 'purple');
             }
         }
         
-        state.activeEncounter = null;
-        // Add rewards
-        state.essence += 20;
-        state.loreScraps += 1;
-        return true;
-    }
-    if (champion.hp <= 0) {
-        log(`${champion.name} has fallen. This cycle's chronicle ends in tragedy.`, 'danger');
-        state.roster = []; // Champion is lost
-        state.activeEncounter = null;
-        return true;
-    }
-    return false;
-}
-
-function useItem(itemIndex) {
-    if (!state.activeEncounter) {
-        log('You can only use items in combat.');
-        return;
-    }
-    const item = state.inventory[itemIndex];
-    if (item) {
-        items[item.id].use(state.roster[0]);
-        item.quantity--;
-        if (item.quantity <= 0) {
-            state.inventory.splice(itemIndex, 1);
+        // Rewards
+        const baseEssence = 25 + Math.floor(Math.random() * 15);
+        const baseLore = 1 + (state.upgrades.find(u => u.id === 'binding' && u.bought) ? 1 : 0) + state.legacyUpgrades.lore.level;
+        const experience = 20 + Math.floor(Math.random() * 15);
+        
+        state.essence += baseEssence;
+        state.loreScraps += baseLore;
+        state.victories += 1;
+        
+        // Champion gains experience
+        champion.experience += experience * (state.upgrades.find(u => u.id === 'wisdom' && u.bought) ? 1.5 : 1);
+        checkLevelUp(champion);
+        
+        // Increase bond
+        champion.bond = Math.min(champion.maxBond, champion.bond + 5);
+        
+        log(`Gained: ${baseEssence} Essence, ${baseLore} Lore Scraps, ${experience} Experience`);
+        
+        // Random item drop
+        if (Math.random() < 0.3) {
+            const itemPool = Object.keys(items);
+            const foundItem = itemPool[Math.floor(Math.random() * itemPool.length)];
+            addItem(foundItem, 1);
+            log(`Found: ${items[foundItem].name}!`, 'success');
         }
-        updateAllUI();
-        setTimeout(enemyTurn, 500); // Using an item takes a turn
-    }
-}
-
-// --- UTILITIES & HELPERS ---
-function log(message, type = 'info') {
-    const colorMap = { 'info': 'var(--muted)', 'success': 'var(--success)', 'danger': 'var(--danger)' };
-    elements.eventLog.innerHTML += `<div style="color:${colorMap[type]}">${message}</div>`;
-    elements.eventLog.scrollTop = elements.eventLog.scrollHeight;
-}
-
-function addItem(itemId, quantity) {
-    let existingItem = state.inventory.find(i => i.id === itemId);
-    if (existingItem) {
-        existingItem.quantity += quantity;
-    } else {
-        state.inventory.push({ id: itemId, quantity: quantity });
-    }
-}
-
-function applyStatus(target, type, duration) {
-    // Prevent stacking the same status
-    if (target.statusEffects.some(s => s.type === type)) return;
-    target.statusEffects.push({ type, duration });
-}
-
-function processStatusEffects(target) {
-    let isStunned = false;
-    if (!target.statusEffects) target.statusEffects = [];
-    target.statusEffects.forEach(status => {
-        switch(status.type) {
-            case 'poison':
-                const poisonDmg = 5;
-                target.hp -= poisonDmg;
-                log(`${target.name} takes ${poisonDmg} poison damage.`, 'danger');
-                break;
-            case 'stunned':
-                isStunned = true;
-                log(`${target.name} is stunned and cannot act!`, 'info');
-                break;
-            case 'weakened':
-                // Handled in damage calculation if implemented
-                break;
-        }
-        status.duration--;
-    });
-    target.statusEffects = target.statusEffects.filter(s => s.duration > 0);
-    return isStunned;
-}
-
-// --- GAME STATE & PRESTIGE ---
-function prestige() {
-    // Removed confirm() wrapper
-    const fragmentsGained = Math.floor(state.loreScraps / 5) + 1;
-    log(`You shattered the crown! The world resets, but you gain ${fragmentsGained} Crown Fragments.`, 'purple');
-
-    const oldFragments = state.crownFragments;
-    
-    // Reset state but keep prestige currency
-    state = getNewGameState();
-    state.loops++;
-    state.crownFragments = oldFragments + fragmentsGained;
-    
-    // Re-apply permanent upgrades
-    state.essencePerClick += state.crownFragments; 
-
-    initGame();
-}
-
-function saveGame() {
-    localStorage.setItem('moonbound_intro_save', btoa(JSON.stringify(state)));
-    log('Game Saved.', 'success');
-}
-
-function loadGame() {
-    const saved = localStorage.getItem('moonbound_intro_save');
-    if (saved) {
-        state = JSON.parse(atob(saved));
-        log('Chronicle Loaded.', 'success');
-        showGame();
-        initGame(true);
-    }
-}
-
-function exportData() {
-    const data = btoa(JSON.stringify(state));
-    const textArea = document.createElement("textarea");
-    textArea.value = data;
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-        document.execCommand('copy');
-        log("Save data copied to clipboard!", 'success');
-    } catch (err) {
-        log("Failed to copy save data.", 'danger');
-    }
-    document.body.removeChild(textArea);
-}
-
-function importData() {
-    log("To import a save, please use the 'Load' button after saving a game.", "info");
-}
-
-
-function startNewGame() {
-    // Removed confirm() wrapper
-    state = getNewGameState();
-    localStorage.removeItem('moonbound_intro_save');
-    showGame();
-    initGame();
-}
-
-function showGame() {
-    elements.mainMenu.style.display = 'none';
-    elements.gameContainer.style.display = 'block';
-}
-
-function showMainMenu() {
-    elements.gameContainer.style.display = 'none';
-    elements.mainMenu.style.display = 'block';
-}
-
-function showHelp() {
-    const helpText = `Welcome, Chronicler!
-- Goal: Guide a champion to defeat the final boss and Shatter the Crown.
-- Gather Temporal Essence by 'Chronicling Events'.
-- Use Essence to 'Find a Champion' and buy 'Scriptorium Upgrades'.
-- Once you have a champion, click nodes on the map to progress.
-- After shattering the crown, you begin a new cycle with powerful 'Crown Fragments'.`;
-    log(helpText.replace(/\n/g, '<br>'));
-}
-
-function initGame(isLoad = false) {
-    if (!isLoad) {
-        log("A new cycle begins. The Ashen Crown's curse holds strong.");
-    }
-    document.getElementById('prestige').disabled = true;
-    updateAllUI();
-}
-
-</script>
-</body>
-</html>
-
+        
+        // Discover lore
